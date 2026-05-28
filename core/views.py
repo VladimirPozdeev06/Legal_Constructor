@@ -554,7 +554,7 @@ def ai_search_documents(request):
     if not isinstance(payload, dict):
         return JsonResponse({"error": "Некорректный JSON"}, status=400)
     query = str(payload.get("query", "")).strip()
-    template_results = search_document_types(query, limit=50)
+    template_results = search_document_types(query, limit=3)
     templates = [
         {
             "id": d.id,

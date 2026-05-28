@@ -12,13 +12,18 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Опционально: ключ OpenAI для сценария «Задать вопрос» (FR-03). Без ключа — заглушка в ответе.
+# Загружаем переменные из файла .env (если есть)
+load_dotenv(BASE_DIR / ".env")
+
+# OpenRouter API для AI-помощника (FR-03). Без ключа — заглушка в ответе.
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
 
 # Лимит запросов к AI в сутки для авторизованных пользователей
 AI_DAILY_LLM_LIMIT_AUTH = int(os.environ.get("AI_DAILY_LLM_LIMIT_AUTH", "15"))
@@ -46,7 +51,7 @@ LEGAL_DOCUMENT_PATHS = {
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&wk5bc_hk)ylnp_lm^ykrqd9!fh%7nhvhnrvk0o(^@8%enrp_!'
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-&wk5bc_hk)ylnp_lm^ykrqd9!fh%7nhvhnrvk0o(^@8%enrp_!")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

@@ -27,7 +27,7 @@ def merge_template_body(template_body: str, values: dict[str, str]) -> str:
     return VARIABLE_RE.sub(repl, template_body or "")
 
 
-def search_document_types(query: str, limit: int = 30):
+def search_document_types(query: str, limit: int = 3):
     q = (query or "").strip()
     if len(q) < 2:
         return []
@@ -160,12 +160,9 @@ def is_document_request(text: str) -> bool:
 
 
 def call_openai_chat(user_message: str, timeout: float = 15.0) -> str:
-    topic_hint = (
-        "Вопрос должен относиться к недвижимости или строительству в РФ. "
-        "Для точной правовой позиции обратитесь к юристу."
-    )
     q = (user_message or "").strip()
     api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
+
     if not api_key:
         if is_document_request(q):
             docs = search_document_types(q, limit=5)
@@ -177,24 +174,30 @@ def call_openai_chat(user_message: str, timeout: float = 15.0) -> str:
         )
 
     system = (
-        "Ты помощник по темам недвижимости и строительства в РФ. Отвечай кратко и по делу (2-5 предложений). "
-        "Если пользователь просит подобрать договор или шаблон, перечисли до 5 подходящих названий без лишнего текста. "
-        "Не выдавай себя за юриста; предупреждай, что это не юридическая консультация. "
-        "Если вопрос вне темы — откажись вежливо."
+        "Ты — AI-помощник сервиса КЮД (конструктор юридических документов) по вопросам недвижимости и строительства в РФ. "
+        "Отвечай кратко и по делу (2-5 предложений) на русском языке. "
+        "Если пользователь ищет договор или шаблон — назови до 3 подходящих из нашего каталога (купля-продажа, дарение, мена, рента, найм и др.). "
+        "Всегда добавляй в конце ответа: «Ответ носит справочный характер и не является юридической консультацией. "
+        "Для решения конкретной ситуации обратитесь к квалифицированному юристу.» "
+        "Если вопрос не связан с недвижимостью или строительством — вежливо откажись отвечать."
     )
 
+    base_url = getattr(settings, "OPENAI_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+    model = getattr(settings, "OPENAI_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
+
     payload = {
-        "model": getattr(settings, "OPENAI_MODEL", "gpt-4o-mini"),
+        "model": model,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": q},
         ],
         "temperature": 0.4,
+        "max_tokens": 400,
     }
 
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
+        f"{base_url}/chat/completions",
         data=data,
         headers={
             "Content-Type": "application/json",

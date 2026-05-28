@@ -1,0 +1,21 @@
+# Секреты — никогда не пушить
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+
+# Django
+db.sqlite3
+*.log
+media/
+
+# IDE
+.idea/
+.vscode/
+*.swp
