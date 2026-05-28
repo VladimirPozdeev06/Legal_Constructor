@@ -1,0 +1,75 @@
+<div
+    id="legalDocMeta"
+    class="hidden"
+    data-privacy-url="{% url 'core:legal_document_preview' 'privacy' %}"
+    data-consent-url="{% url 'core:legal_document_preview' 'consent' %}"
+></div>
+
+<div id="legalDocBackdrop" class="legal-doc-backdrop" aria-hidden="true">
+    <div class="legal-doc-dialog" role="dialog" aria-modal="true" aria-labelledby="legalDocTitle">
+        <div class="legal-doc-dialog-header">
+            <h2 id="legalDocTitle" class="legal-doc-dialog-title"></h2>
+            <button type="button" class="legal-doc-close" id="legalDocClose" aria-label="Закрыть">×</button>
+        </div>
+        <div id="legalDocBody" class="legal-doc-body"></div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const backdrop = document.getElementById("legalDocBackdrop");
+        const bodyEl = document.getElementById("legalDocBody");
+        const titleEl = document.getElementById("legalDocTitle");
+        const closeBtn = document.getElementById("legalDocClose");
+        const meta = document.getElementById("legalDocMeta");
+        if (!backdrop || !bodyEl || !titleEl || !closeBtn || !meta) return;
+
+        const urls = {
+            privacy: meta.dataset.privacyUrl,
+            consent: meta.dataset.consentUrl,
+        };
+
+        function openLegal(slug) {
+            const url = urls[slug];
+            if (!url) return;
+            titleEl.textContent = "Загрузка…";
+            bodyEl.innerHTML = '<p class="legal-doc-loading">Открываем документ…</p>';
+            backdrop.classList.add("is-open");
+            backdrop.setAttribute("aria-hidden", "false");
+            document.body.style.overflow = "hidden";
+            fetch(url, { credentials: "same-origin" })
+                .then((r) => r.json())
+                .then((data) => {
+                    titleEl.textContent = data.title || "Документ";
+                    bodyEl.innerHTML = data.html || "<p>Нет содержимого.</p>";
+                })
+                .catch(() => {
+                    titleEl.textContent = "Ошибка";
+                    bodyEl.innerHTML = "<p>Не удалось загрузить документ.</p>";
+                });
+        }
+
+        function closeLegal() {
+            backdrop.classList.remove("is-open");
+            backdrop.setAttribute("aria-hidden", "true");
+            document.body.style.overflow = "";
+            bodyEl.innerHTML = "";
+        }
+
+        document.addEventListener("click", function (e) {
+            const t = e.target.closest("[data-legal-slug]");
+            if (!t) return;
+            e.preventDefault();
+            const slug = t.getAttribute("data-legal-slug");
+            if (slug === "privacy" || slug === "consent") openLegal(slug);
+        });
+
+        closeBtn.addEventListener("click", closeLegal);
+        backdrop.addEventListener("click", function (e) {
+            if (e.target === backdrop) closeLegal();
+        });
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && backdrop.classList.contains("is-open")) closeLegal();
+        });
+    })();
+</script>

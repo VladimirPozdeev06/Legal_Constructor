@@ -1,0 +1,71 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Конструктор юридических документов с AI-помощником для недвижимости и строительства.">
+    <meta name="theme-color" content="#517493">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Конструктор юридических документов">
+    <meta property="og:description" content="Быстрое создание юридических документов по шаблонам с AI-помощником.">
+    <meta property="og:locale" content="ru_RU">
+    <title>{% block title %}Конструктор юридических документов{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo.svg' %}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Arsenal+SC:wght@700&family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600;8..144,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            text: "#022E4C",
+                            blue: "#517493",
+                            blueHover: "#7490A9",
+                            bluePressed: "#415D76",
+                            accent: "#56061D",
+                            accentHover: "#963C56",
+                            accentPressed: "#762139",
+                            bg: "#FCFBFA",
+                            card: "#F9F7F5",
+                            clickable: "#DCE3E9",
+                            clickableHover: "#CBD5DF",
+                            line: "#E2D9CB",
+                            beige: "#C6BCAC"
+                        }
+                    },
+                    fontFamily: {
+                        sans: ["Roboto Flex", "Segoe UI", "Tahoma", "sans-serif"],
+                        display: ["Arsenal SC", "Roboto Flex", "sans-serif"]
+                    },
+                    boxShadow: {
+                        soft: "0 8px 24px rgba(2, 46, 76, 0.10)",
+                        card: "0 8px 20px rgba(48, 60, 70, 0.10)"
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="bg-brand-bg text-brand-text font-sans antialiased">
+    <script>window.CSRF_TOKEN = "{{ csrf_token|escapejs }}";</script>
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+    {% block floating_widget %}
+        {% include "partials/ai_widget.html" %}
+    {% endblock %}
+    {% include "partials/legal_modal.html" %}
+</body>
+</html>

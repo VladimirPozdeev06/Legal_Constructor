@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<main class="figma-page-bg overflow-x-hidden text-[#022E4C]">
+    <div class="mx-auto flex min-h-screen w-[min(1920px,100vw)] flex-col gap-6 px-[120px] pb-3 pt-6 max-[1280px]:px-8">
+        <header class="relative z-10 flex items-center justify-between gap-6">
+            <a href="{% url 'core:home' %}" class="flex flex-1 items-center gap-1">
+                <img src="{% static 'img/logo.svg' %}" alt="КЮД" class="h-12 w-auto">
+                <span class="font-display text-[24px] font-bold uppercase leading-[0.75]">Конструктор<br>юридических документов</span>
+            </a>
+            <div class="flex items-center gap-6 max-[900px]:flex-wrap max-[900px]:justify-end">
+                <a href="{% url 'core:my_documents' %}" class="inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Мои документы</a>
+                <a href="{% url 'core:my_documents' %}" class="inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Профиль</a>
+                <form method="post" action="{% url 'accounts:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex h-12 items-center justify-center rounded-[12px] bg-[#56061D] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#963C56] active:bg-[#762139]">Выйти</button>
+                </form>
+            </div>
+        </header>
+
+        <section class="relative z-10 grid flex-1 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(260px,340px)_1fr_minmax(240px,300px)]">
+            <aside class="rounded-xl bg-[#F9F7F5] p-4 shadow-[0_0_48px_rgba(198,180,172,0.2)]">
+                <p class="mb-2 text-[24px] font-bold leading-none">Шаблоны</p>
+                <div class="max-h-[720px] space-y-1 overflow-y-auto pr-1">
+                    {% for domain_item in catalog_tree %}
+                        <div class="rounded-xl">
+                            <button type="button" class="catalog-domain-toggle flex w-full items-center gap-2 py-3 text-left" data-target="domain-{{ forloop.counter0 }}">
+                                <span class="text-[20px]">▾</span>
+                                <p class="text-[20px] font-semibold leading-[0.95]">{{ domain_item.domain.name }}</p>
+                            </button>
+                            <div id="domain-{{ forloop.counter0 }}" class="space-y-2 pl-6">
+                                {% for group in domain_item.groups %}
+                                    <div>
+                                        <button type="button" class="catalog-group-toggle flex w-full items-center gap-2 py-2 text-left" data-target="group-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}">
+                                            <span class="text-[16px]">▾</span>
+                                            <span class="text-[16px] font-semibold leading-[1.1]">{{ group.name }}</span>
+                                        </button>
+                                        <div id="group-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}" class="space-y-2 pl-5">
+                                            {% for item in group.items %}
+                                                {% if item.doc_type %}
+                                                    <div class="py-1" id="catalog-doc-{{ item.doc_type.id }}">
+                                                        <a href="{% url 'core:start_document' item.doc_type.id %}" class="flex items-center gap-2 text-[15px] leading-[1.1] hover:text-[#517493]">
+                                                            <img src="{% static 'icons/ic-document.svg' %}" alt="" class="h-4 w-4">
+                                                            <span>{{ item.name }}</span>
+                                                        </a>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="flex items-center gap-2 py-1 text-[15px] leading-[1.1] text-[#AA9F8D]">
+                                                        <img src="{% static 'icons/ic-document.svg' %}" alt="" class="h-4 w-4 opacity-50">
+                                                        <span>{{ item.name }}</span>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <p class="py-2 text-[16px] text-[#AA9F8D]">Скоро появятся шаблоны</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="py-2 text-[16px] text-[#AA9F8D]">Каталог пока пуст</p>
+                    {% endfor %}
+                </div>
+            </aside>
+
+            <section class="rounded-xl bg-[#F9F7F5] p-6 shadow-[0_0_48px_rgba(198,180,172,0.2)]">
+                {% if workspace %}
+                    {% with doc=workspace.document %}
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-[14px] text-[#517493]">{{ workspace.template_version_label }}</p>
+                                <h2 class="font-display text-[28px] font-bold uppercase leading-tight">Работа с документом</h2>
+                            </div>
+                            <a href="{% url 'core:cabinet' %}?domain={{ workspace.domain_slug }}" class="text-[14px] font-semibold text-[#56061D] underline">Закрыть документ</a>
+                        </div>
+
+                        {% if doc.workspace_phase == "variables" %}
+                            <div class="grid gap-6 lg:grid-cols-[minmax(220px,280px)_1fr]">
+                                <div class="space-y-3">
+                                    <p class="text-[18px] font-bold">Поля</p>
+                                    {% for row in workspace.variable_rows %}
+                                        <label class="block text-[14px] font-semibold" for="var-{{ row.key }}">{{ row.label }}</label>
+                                        <input id="var-{{ row.key }}" data-var-key="{{ row.key }}" type="text" value="{{ row.value }}" class="var-input mb-3 w-full rounded-lg border border-[#C6BCAC] bg-white px-3 py-2 text-[15px]">
+                                    {% empty %}
+                                        <p class="text-[15px] text-[#46627B]">В шаблоне нет переменных — перейдите к редактированию.</p>
+                                    {% endfor %}
+                                    <p id="autosave-status" class="text-[12px] text-[#AA9F8D]"></p>
+                                    <button type="button" id="btn-finalize" class="mt-2 inline-flex h-11 items-center justify-center rounded-[12px] bg-[#56061D] px-6 text-[14px] font-semibold uppercase text-[#F3F0EA]">Перейти к редактированию</button>
+                                </div>
+                                <div>
+                                    <p class="mb-2 text-[18px] font-bold">Предпросмотр</p>
+                                    <div id="workspace-preview" class="workspace-preview-area min-h-[320px] whitespace-pre-wrap rounded-lg border border-[#C6BCAC] bg-white p-4 text-[15px] leading-relaxed text-[#022E4C]">{{ workspace.merged_preview }}</div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="space-y-3">
+                                <label class="block text-[14px] font-semibold" for="doc-title">Название документа</label>
+                                <input id="doc-title" type="text" value="{{ doc.title }}" class="w-full max-w-xl rounded-lg border border-[#C6BCAC] bg-white px-3 py-2 text-[16px] font-semibold">
+                                <p class="text-[14px] text-[#517493]">{{ workspace.template_version_label }}</p>
+                                <label class="block text-[14px] font-semibold" for="doc-editor">Текст документа</label>
+                                <textarea id="doc-editor" class="min-h-[420px] w-full rounded-lg border border-[#C6BCAC] bg-white p-4 font-mono text-[14px] leading-relaxed">{{ doc.content }}</textarea>
+                                <p id="editor-autosave" class="text-[12px] text-[#AA9F8D]"></p>
+                            </div>
+                        {% endif %}
+
+                        <script>
+                            window.__workspaceDocId = {{ doc.id }};
+                            window.__workspacePhase = "{{ doc.workspace_phase }}";
+                            window.__saveFieldsUrl = "{% url 'core:save_document_fields' doc.id %}";
+                            window.__finalizeUrl = "{% url 'core:finalize_variables' doc.id %}";
+                            window.__saveEditorUrl = "{% url 'core:save_document_editor' doc.id %}";
+                        </script>
+                    {% endwith %}
+                {% else %}
+                    <div class="min-h-[420px] rounded-xl bg-white p-4 text-[16px] text-[#022E4C]">
+                        Выберите необходимый шаблон договора в списке слева.
+                    </div>
+                {% endif %}
+            </section>
+
+            <aside class="pt-1">
+                <p class="mb-4 text-[24px] font-bold leading-none">Действия с<br>документом</p>
+                <div class="flex flex-col gap-2 text-[20px] font-bold leading-[1.2] text-[#022E4C]">
+                    {% if workspace %}
+                        <button type="button" id="action-preview" class="text-left transition hover:text-[#517493]">Просмотр</button>
+                        <button type="button" id="action-edit" class="text-left transition hover:text-[#517493]">Редактирование</button>
+                        <form method="post" action="{% url 'core:duplicate_document' workspace.document.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="text-left transition hover:text-[#517493]">Дублирование</button>
+                        </form>
+                        <form method="post" action="{% url 'core:delete_document' workspace.document.id %}" onsubmit="return confirm('Документ будет удалён без возможности восстановления. Продолжить?');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-left transition hover:text-[#963C56]">Удаление</button>
+                        </form>
+                        <a href="{% url 'core:download_user_document_docx' workspace.document.id %}" class="text-left transition hover:text-[#517493]">Экспорт</a>
+                    {% else %}
+                        <span class="text-[#022E4C]/60">Просмотр</span>
+                        <span class="text-[#022E4C]/60">Редактирование</span>
+                        <span class="text-[#022E4C]/60">Дублирование</span>
+                        <span class="text-[#022E4C]/60">Удаление</span>
+                        <span class="text-[#022E4C]/60">Экспорт</span>
+                    {% endif %}
+                </div>
+            </aside>
+        </section>
+
+        <footer class="relative z-10 flex w-full flex-wrap items-center gap-12 pt-3">
+            <div class="flex min-w-[240px] flex-1 flex-col gap-2">
+                <div class="flex items-start gap-4">
+                    <img src="{% static 'img/logo.svg' %}" alt="КЮД" class="h-14 w-auto">
+                    <p class="font-display text-[24px] font-bold uppercase leading-[0.9] whitespace-nowrap">Конструктор<br>юридических документов</p>
+                </div>
+                <p class="text-[20px] leading-[1.4] text-[#022E4C]">603000, г. Нижний Новгород, пр. Гагарина, 27</p>
+            </div>
+            <div class="flex flex-1 items-center justify-center gap-6 self-stretch">
+                <img src="{% static 'icons/ic-mail.svg' %}" alt="Почта" class="h-12 w-12">
+                <img src="{% static 'icons/ic-phone-call.svg' %}" alt="Телефон" class="h-12 w-12">
+                <img src="{% static 'icons/ic-vkontakte.svg' %}" alt="VK" class="h-12 w-12">
+                <img src="{% static 'icons/ic-max.svg' %}" alt="Сообщения" class="h-12 w-12">
+            </div>
+            <div class="flex min-w-[240px] flex-1 flex-col items-end gap-3 text-[#022E4C]">
+                <p class="font-display text-[24px] leading-[1]">Документы</p>
+                <a href="#" data-legal-slug="privacy" class="text-[20px] leading-[1.4] underline hover:text-[#517493]">Политика конфиденциальности</a>
+                <a href="#" data-legal-slug="consent" class="text-[20px] leading-[1.4] underline hover:text-[#517493]">Согласие на обработку персональных данных</a>
+            </div>
+        </footer>
+    </div>
+</main>
+
+{% if workspace %}
+{{ workspace.template_body|json_script:"workspace-template-body" }}
+{% endif %}
+
+<script>
+    (() => {
+        const toggleSection = (selector) => {
+            document.querySelectorAll(selector).forEach((button) => {
+                button.addEventListener("click", () => {
+                    const targetId = button.getAttribute("data-target");
+                    const section = document.getElementById(targetId);
+                    if (!section) return;
+                    const hidden = section.classList.toggle("hidden");
+                    const icon = button.querySelector("span");
+                    if (icon) icon.textContent = hidden ? "▸" : "▾";
+                });
+            });
+        };
+        toggleSection(".catalog-domain-toggle");
+        toggleSection(".catalog-group-toggle");
+    })();
+</script>
+
+{% if workspace %}
+<script>
+    (() => {
+        const getCsrf = () => window.CSRF_TOKEN || "";
+        const docId = window.__workspaceDocId;
+        const phase = window.__workspacePhase;
+
+        const tplEl = document.getElementById("workspace-template-body");
+        const templateBody = tplEl ? JSON.parse(tplEl.textContent) : "";
+
+        const esc = (s) =>
+            String(s)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+
+        const varOpen = String.fromCharCode(123, 123);
+        const varClose = String.fromCharCode(125, 125);
+        const mergePreviewHtml = (values) => {
+            return templateBody.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, key) => {
+                const k = String(key).trim();
+                const raw = values[k];
+                if (raw != null && String(raw).trim()) {
+                    return `<span class="workspace-var-filled">${esc(String(raw))}</span>`;
+                }
+                return `<mark class="workspace-var-empty">${varOpen}${esc(k)}${varClose}</mark>`;
+            });
+        };
+
+        if (phase === "variables") {
+            const inputs = Array.from(document.querySelectorAll(".var-input"));
+            const preview = document.getElementById("workspace-preview");
+            const status = document.getElementById("autosave-status");
+
+            const readValues = () => {
+                const v = {};
+                inputs.forEach((inp) => { v[inp.dataset.varKey] = inp.value; });
+                return v;
+            };
+
+            const render = () => {
+                if (preview) preview.innerHTML = mergePreviewHtml(readValues()).replace(/\n/g, "<br>");
+            };
+            render();
+            inputs.forEach((inp) => inp.addEventListener("input", render));
+
+            let t = null;
+            const scheduleSave = () => {
+                status.textContent = "Изменения будут сохранены…";
+                clearTimeout(t);
+                t = setTimeout(async () => {
+                    try {
+                        const res = await fetch(window.__saveFieldsUrl, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": getCsrf(),
+                            },
+                            body: JSON.stringify({ values: readValues() }),
+                        });
+                        if (res.ok) status.textContent = "Черновик сохранён";
+                        else status.textContent = "Не удалось сохранить черновик";
+                    } catch {
+                        status.textContent = "Ошибка сети при сохранении";
+                    }
+                }, 5000);
+            };
+            inputs.forEach((inp) => inp.addEventListener("input", scheduleSave));
+
+            document.getElementById("btn-finalize")?.addEventListener("click", async () => {
+                const res = await fetch(window.__finalizeUrl, {
+                    method: "POST",
+                    headers: { "X-CSRFToken": getCsrf(), "Content-Type": "application/json" },
+                    body: "{}",
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.redirect) window.location.href = data.redirect;
+                else alert(data.error || "Проверьте заполнение полей");
+            });
+
+            document.getElementById("action-preview")?.addEventListener("click", () => {
+                document.getElementById("workspace-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+            document.getElementById("action-edit")?.addEventListener("click", async () => {
+                const res = await fetch(window.__finalizeUrl, {
+                    method: "POST",
+                    headers: { "X-CSRFToken": getCsrf(), "Content-Type": "application/json" },
+                    body: "{}",
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.redirect) window.location.href = data.redirect;
+                else alert(data.error || "Сначала заполните все поля");
+            });
+        }
+
+        if (phase === "editing") {
+            const title = document.getElementById("doc-title");
+            const editor = document.getElementById("doc-editor");
+            const hint = document.getElementById("editor-autosave");
+            let t = null;
+            const save = async () => {
+                try {
+                    const res = await fetch(window.__saveEditorUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCsrf(),
+                        },
+                        body: JSON.stringify({ title: title.value, content: editor.value }),
+                    });
+                    hint.textContent = res.ok ? "Сохранено" : "Ошибка сохранения";
+                } catch {
+                    hint.textContent = "Ошибка сети";
+                }
+            };
+            const schedule = () => {
+                hint.textContent = "Сохранение…";
+                clearTimeout(t);
+                t = setTimeout(save, 5000);
+            };
+            title?.addEventListener("input", schedule);
+            editor?.addEventListener("input", schedule);
+
+            document.getElementById("action-preview")?.addEventListener("click", () => {
+                editor?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+            document.getElementById("action-edit")?.addEventListener("click", () => editor?.focus());
+        }
+    })();
+</script>
+{% endif %}
+{% endblock %}
