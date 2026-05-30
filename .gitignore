@@ -13,7 +13,10 @@ env/
 # Django
 db.sqlite3
 *.log
-media/
+media/**
+!media/templates/
+!media/templates/docx/
+!media/templates/docx/*.docx
 
 # IDE
 .idea/

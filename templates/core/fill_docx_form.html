@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}{{ document_type.name }} — Заполнить договор{% endblock %}
+
+{% block content %}
+<div class="min-h-screen" style="overflow-x: clip;">
+
+  {# ── Sticky header ── #}
+  <header id="formHeader" class="sticky top-0 z-50 flex items-center gap-4 px-6 py-3
+                 bg-[#FCFBFA]/95 backdrop-blur-sm border-b border-brand-line">
+    <a href="javascript:history.back()"
+       class="flex items-center gap-1.5 text-brand-blue hover:text-brand-text transition-colors text-sm font-medium">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Назад
+    </a>
+    <div class="h-5 w-px bg-brand-line"></div>
+    <span class="text-sm text-brand-blue font-medium truncate max-w-xs">{{ document_type.name }}</span>
+    <div class="ml-auto flex items-center gap-3">
+      {# Кнопка предпросмотр — только на мобиле #}
+      <button type="button" id="mobilePreviewBtn"
+              class="lg:hidden flex items-center gap-1.5 text-xs font-medium text-brand-blue
+                     border border-brand-line rounded-lg px-3 py-1.5 hover:bg-brand-bg transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Предпросмотр
+      </button>
+      <span class="text-xs text-brand-beige flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 9.414V19a2 2 0 01-2 2z"/>
+        </svg>
+        {{ total_fields }} полей
+      </span>
+    </div>
+  </header>
+
+  {# ── Two-column layout ── #}
+  <div class="flex">
+
+    {# ── LEFT: форма ── #}
+    <main class="w-full lg:w-[480px] lg:flex-shrink-0 px-4 py-8 lg:pl-8 lg:pr-6">
+
+      <h1 class="font-display text-2xl text-brand-text mb-1">Заполните данные договора</h1>
+      <p class="text-sm text-brand-blue mb-8">
+        Все поля будут подставлены в договор. После нажатия кнопки &mdash; файл скачается автоматически.
+      </p>
+
+      <form method="post" id="docxForm">
+        {% csrf_token %}
+
+        {% for section_name, fields in field_groups %}
+        <section class="mb-8">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-brand-blue mb-3 pb-2
+                     border-b border-brand-line flex items-center gap-2">
+            {% if "Реквизиты" in section_name %}
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" clip-rule="evenodd"/>
+              </svg>
+            {% elif "Объект" in section_name or "Квартира" in section_name %}
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+              </svg>
+            {% elif "Право" in section_name %}
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" clip-rule="evenodd"/>
+              </svg>
+            {% elif "Цена" in section_name or "оплат" in section_name %}
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zm1.567 4.864a2.31 2.31 0 01.567.267c.363.242.433.468.433.582 0 .114-.07.34-.433.582a2.31 2.31 0 01-.567.267V12.28c.214-.07.4-.16.567-.268z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.028 2.353 1.148V17a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 15.766 14 14.991 14 14c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 11.092V9.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.028-2.354-1.149V5z" clip-rule="evenodd"/>
+              </svg>
+            {% else %}
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+              </svg>
+            {% endif %}
+            {{ section_name }}
+          </h2>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            {% for field in fields %}
+            <div>
+              <label for="id_{{ field.name }}"
+                     class="block text-xs font-medium text-brand-text mb-1">
+                {{ field.label }}
+              </label>
+              {% if field.field_type != "text" %}
+              <select
+                id="id_{{ field.name }}"
+                name="{{ field.name }}"
+                required
+                class="w-full rounded-lg border border-brand-line bg-white px-3 py-2
+                       text-sm text-brand-text appearance-none
+                       focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue
+                       transition-colors">
+                <option value="">— выберите —</option>
+                {% for opt_label, opt_val in field.options %}
+                <option value="{{ opt_val }}"{% if field.value == opt_val %} selected{% endif %}>{{ opt_label }}</option>
+                {% endfor %}
+              </select>
+              {% else %}
+              <input
+                type="text"
+                id="id_{{ field.name }}"
+                name="{{ field.name }}"
+                value="{{ field.value }}"
+                required
+                class="w-full rounded-lg border border-brand-line bg-white px-3 py-2
+                       text-sm text-brand-text
+                       focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue
+                       transition-colors"
+              >
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endfor %}
+
+        {# ── Кнопка ── #}
+        <div class="sticky bottom-0 pt-4 pb-6 bg-gradient-to-t from-brand-bg via-brand-bg to-transparent">
+          <button type="submit" id="submitBtn"
+                  class="w-full flex items-center justify-center gap-2 rounded-xl
+                         bg-brand-blue hover:bg-brand-blueHover active:bg-brand-bluePressed
+                         text-white font-semibold text-base py-3.5 px-6
+                         transition-colors shadow-soft">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <span id="submitLabel">Сформировать и скачать договор</span>
+          </button>
+          <p class="text-center text-xs text-brand-beige mt-2">
+            Заполните все поля — они будут подставлены в договор
+          </p>
+        </div>
+      </form>
+    </main>
+
+    {# ── RIGHT: предпросмотр (десктоп) ── #}
+    <aside id="previewAside"
+           class="hidden lg:flex flex-col flex-1 min-w-0 border-l border-brand-line">
+      <div id="previewPanel" class="overflow-y-auto">
+        <div class="px-5 py-5">
+          <h3 class="text-xs font-semibold uppercase tracking-widest text-brand-blue mb-4
+                     flex items-center gap-2 sticky top-0 bg-white py-2 -mt-2">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            Предпросмотр документа
+          </h3>
+          <div class="bg-white rounded shadow-[0_2px_14px_rgba(0,0,0,0.11)] mx-2 my-2"
+               style="font-family:'Times New Roman',Times,serif;font-size:13px;line-height:1.8;padding:36px 44px;">
+            {% for block in text_blocks %}
+              <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  {# ── Мобильный drawer ── #}
+  <div id="mobileDrawer"
+       class="fixed inset-0 z-[60] hidden lg:hidden"
+       aria-modal="true">
+    {# Overlay #}
+    <div id="drawerOverlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    {# Sheet снизу #}
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[75vh] flex flex-col shadow-xl">
+      <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-brand-line flex-shrink-0">
+        <h3 class="text-sm font-semibold text-brand-text flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Предпросмотр документа
+        </h3>
+        <button id="closeDrawerBtn" class="p-1.5 rounded-lg hover:bg-brand-bg transition-colors text-brand-blue">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="overflow-y-auto px-3 py-3 flex-1">
+        <div class="bg-white rounded shadow-[0_1px_8px_rgba(0,0,0,0.09)]"
+             style="font-family:'Times New Roman',Times,serif;font-size:12px;line-height:1.75;padding:24px 28px;">
+          {% for block in text_blocks %}
+            <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Позиционирование панели предпросмотра ──
+(function positionPreview() {
+  const header = document.getElementById('formHeader');
+  const panel  = document.getElementById('previewPanel');
+  if (!header || !panel) return;
+  function setHeight() {
+    const h = header.getBoundingClientRect().height;
+    panel.style.position = 'sticky';
+    panel.style.top = h + 'px';
+    panel.style.height = 'calc(100vh - ' + h + 'px)';
+  }
+  setHeight();
+  new ResizeObserver(setHeight).observe(header);
+})();
+
+// ── Живое обновление предпросмотра ──
+function updatePreview() {
+  document.querySelectorAll('input[type="text"], select').forEach(function(input) {
+    const varName = input.name;
+    const value   = input.value.trim();
+    document.querySelectorAll('[data-var="' + varName + '"]').forEach(function(span) {
+      if (value) {
+        span.textContent = value;
+        span.className = span.className
+          .replace(/bg-amber-50|text-amber-700|border-amber-200/g, '')
+          .trim();
+        span.classList.add('bg-green-50', 'text-green-800', 'border-green-200');
+      } else {
+        span.textContent = '___';
+        span.classList.remove('bg-green-50', 'text-green-800', 'border-green-200');
+        span.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
+      }
+    });
+  });
+}
+document.querySelectorAll('input[type="text"], select').forEach(function(inp) {
+  inp.addEventListener('input', updatePreview);
+  inp.addEventListener('change', updatePreview);
+});
+
+// ── Мобильный drawer ──
+var drawer  = document.getElementById('mobileDrawer');
+var overlay = document.getElementById('drawerOverlay');
+var openBtn = document.getElementById('mobilePreviewBtn');
+var closeBtn= document.getElementById('closeDrawerBtn');
+
+function openDrawer()  { drawer.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+function closeDrawer() { drawer.classList.add('hidden');    document.body.style.overflow = ''; }
+
+if (openBtn)  openBtn.addEventListener('click', openDrawer);
+if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+if (overlay)  overlay.addEventListener('click', closeDrawer);
+
+// ── Кнопка submit ──
+document.getElementById('docxForm').addEventListener('submit', function() {
+  var btn   = document.getElementById('submitBtn');
+  var label = document.getElementById('submitLabel');
+  btn.disabled = true;
+  btn.classList.add('opacity-70', 'cursor-wait');
+  label.textContent = 'Формируется…';
+  setTimeout(function() {
+    btn.disabled = false;
+    btn.classList.remove('opacity-70', 'cursor-wait');
+    label.textContent = 'Сформировать и скачать договор';
+  }, 5000);
+});
+</script>
+{% endblock %}
+
+{% block floating_widget %}{% endblock %}

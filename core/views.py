@@ -106,6 +106,16 @@ def _build_catalog_tree():
             _normalize_name(doc.name): doc for doc in domain.document_types.all()
         }
 
+    # ID документов у которых есть размеченный .docx шаблон
+    from catalog.models import Template as CatalogTemplate
+    docx_ids = set(
+        TemplateVersion.objects
+        .filter(is_published=True, template__is_active=True)
+        .exclude(docx_file="")
+        .exclude(docx_file=None)
+        .values_list("template__document_type_id", flat=True)
+    )
+
     catalog_tree = []
     for domain in domains:
         groups = []
@@ -114,16 +124,22 @@ def _build_catalog_tree():
             for group in REAL_ESTATE_GROUPS:
                 items = []
                 for doc_name in group["documents"]:
+                    doc_type = domain_docs.get(_normalize_name(doc_name))
                     items.append(
                         {
                             "name": doc_name,
-                            "doc_type": domain_docs.get(_normalize_name(doc_name)),
+                            "doc_type": doc_type,
+                            "has_fill_form": doc_type is not None and doc_type.id in docx_ids,
                         }
                     )
                 groups.append({"name": group["name"], "items": items})
         else:
             items = [
-                {"name": doc.name, "doc_type": doc}
+                {
+                    "name": doc.name,
+                    "doc_type": doc,
+                    "has_fill_form": doc.id in docx_ids,
+                }
                 for doc in domain.document_types.all()
                 if doc.is_active
             ]
@@ -272,6 +288,13 @@ def download_template_docx(request, document_type_id):
     if template_version is None:
         raise Http404("Шаблон документа не найден")
 
+    # Если есть размеченный .docx — перенаправляем на форму заполнения
+    if template_version.docx_file:
+        return redirect(
+            reverse("core:fill_docx_form", args=[document_type_id])
+        )
+
+    # Иначе — старый путь: генерируем docx из plain text
     doc = Document()
     doc.add_heading(document_type.name, level=1)
     for line in template_version.body.splitlines():
@@ -292,6 +315,193 @@ def download_template_docx(request, document_type_id):
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+def _extract_docx_variables(path: str) -> list[str]:
+    """Извлекает все {{ переменные }} из .docx файла."""
+    import re
+    doc = Document(path)
+    all_text = " ".join(p.text for p in doc.paragraphs)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                all_text += " ".join(p.text for p in cell.paragraphs)
+    # Заголовки и подвалы
+    for section in doc.sections:
+        try:
+            all_text += " ".join(p.text for p in section.header.paragraphs)
+            all_text += " ".join(p.text for p in section.footer.paragraphs)
+        except Exception:
+            pass
+    return sorted(set(re.findall(r"\{\{\s*(\w+)\s*\}\}", all_text)))
+
+
+def _extract_docx_text_blocks(path: str):
+    """
+    Извлекает форматированные блоки текста из .docx в порядке документа.
+    Каждый блок — dict с ключами:
+      type: 'p' | 'tr'
+      segments: [('text'|'var'|'blank', str), ...]
+      css_class: str   (Tailwind классы)
+      para_style: str  (inline CSS)
+    """
+    import re as _re
+    from docx.text.paragraph import Paragraph as _DocxPara
+    from docx.table import Table as _DocxTable
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    SEGMENT_RE = _re.compile(r'\{\{\s*(\w+)\s*\}\}|«_+»|_{2,}')
+
+    def parse_segments(text):
+        segs, last = [], 0
+        for m in SEGMENT_RE.finditer(text):
+            if m.start() > last:
+                segs.append(('text', text[last:m.start()]))
+            g = m.group()
+            if g.startswith('{{'):
+                segs.append(('var', m.group(1)))
+            else:
+                segs.append(('blank', g))
+            last = m.end()
+        if last < len(text):
+            segs.append(('text', text[last:]))
+        return segs or [('text', '')]
+
+    doc = Document(path)
+    blocks = []
+
+    for child in doc.element.body:
+        tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+
+        if tag == 'p':
+            para = _DocxPara(child, doc)
+            text = para.text.strip()
+            if not text:
+                continue
+
+            sname = (para.style.name or 'Normal') if para.style else 'Normal'
+            align = para.alignment
+            bold = any(r.bold for r in para.runs if r.text.strip())
+            # Заголовок: по стилю ИЛИ короткий + центр + жирный
+            heading = (
+                'heading' in sname.lower()
+                or 'заголовок' in sname.lower()
+                or (bold and align == WD_ALIGN_PARAGRAPH.CENTER and len(text) < 120)
+            )
+            if heading:
+                bold = True
+
+            css = ['mb-1']
+            if bold:
+                css.append('font-bold')
+            if align == WD_ALIGN_PARAGRAPH.CENTER:
+                css.append('text-center')
+            elif align == WD_ALIGN_PARAGRAPH.RIGHT:
+                css.append('text-right')
+            elif align == WD_ALIGN_PARAGRAPH.JUSTIFY:
+                css.append('text-justify')
+
+            # Отступ абзаца
+            try:
+                li = para.paragraph_format.left_indent
+                indent_em = round(li / 360000 * 0.5, 2) if li and li > 0 else 0
+            except Exception:
+                indent_em = 0
+
+            if indent_em > 0:
+                pstyle = f'padding-left: {indent_em}em;'
+            elif (
+                not heading
+                and len(text) > 60
+                and align not in (WD_ALIGN_PARAGRAPH.CENTER, WD_ALIGN_PARAGRAPH.RIGHT)
+            ):
+                pstyle = 'text-indent: 1.25em;'
+            else:
+                pstyle = ''
+
+            blocks.append({
+                'type': 'p',
+                'segments': parse_segments(text),
+                'css_class': ' '.join(css),
+                'para_style': pstyle,
+            })
+
+        elif tag == 'tbl':
+            tbl = _DocxTable(child, doc)
+            for row in tbl.rows:
+                cells = [c.text.strip() for c in row.cells if c.text.strip()]
+                # Убираем дубликаты слитых ячеек
+                deduped: list[str] = []
+                for c in cells:
+                    if not deduped or c != deduped[-1]:
+                        deduped.append(c)
+                if deduped:
+                    blocks.append({
+                        'type': 'tr',
+                        'segments': parse_segments('   '.join(deduped)),
+                        'css_class': 'mb-1',
+                        'para_style': '',
+                    })
+
+    return blocks
+
+
+@login_required
+def fill_docx_form(request, document_type_id):
+    """GET: форма заполнения переменных; POST: генерирует docx через docxtpl."""
+    from docxtpl import DocxTemplate
+    from .variables import group_variables
+
+    document_type = get_object_or_404(DocumentType, id=document_type_id, is_active=True)
+    template_version = (
+        TemplateVersion.objects.filter(
+            template__document_type=document_type,
+            template__is_active=True,
+            is_published=True,
+        )
+        .order_by("-version_number")
+        .first()
+    )
+    if template_version is None or not template_version.docx_file:
+        raise Http404("Размеченный шаблон не найден")
+
+    docx_path = template_version.docx_file.path
+    variables = _extract_docx_variables(docx_path)
+
+    if request.method == "POST":
+        context = {v: request.POST.get(v, "") for v in variables}
+        tpl = DocxTemplate(docx_path)
+        tpl.render(context)
+        output = BytesIO()
+        tpl.save(output)
+        output.seek(0)
+        filename = f"{slugify(document_type.name, allow_unicode=True)}.docx"
+        response = HttpResponse(
+            output.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    # GET: собираем поля формы с группировкой
+    text_blocks = _extract_docx_text_blocks(docx_path)
+
+    # Порядок переменных в документе (для сортировки полей формы)
+    var_order: list[str] = []
+    _seen: set[str] = set()
+    for _block in text_blocks:
+        for _kind, _content in _block['segments']:
+            if _kind == "var" and _content not in _seen:
+                var_order.append(_content)
+                _seen.add(_content)
+
+    field_groups = group_variables(variables, request.POST, var_order=var_order)
+    return render(request, "core/fill_docx_form.html", {
+        "document_type": document_type,
+        "field_groups": field_groups,
+        "total_fields": len(variables),
+        "text_blocks": text_blocks,
+    })
 
 
 @login_required

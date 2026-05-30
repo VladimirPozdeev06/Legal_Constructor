@@ -40,10 +40,23 @@
                                             {% for item in group.items %}
                                                 {% if item.doc_type %}
                                                     <div class="py-1" id="catalog-doc-{{ item.doc_type.id }}">
-                                                        <a href="{% url 'core:start_document' item.doc_type.id %}" class="flex items-center gap-2 text-[15px] leading-[1.1] hover:text-[#517493]">
-                                                            <img src="{% static 'icons/ic-document.svg' %}" alt="" class="h-4 w-4">
-                                                            <span>{{ item.name }}</span>
-                                                        </a>
+                                                        {% if item.has_fill_form %}
+                                                            {# Размеченный шаблон — ведём на форму заполнения #}
+                                                            <a href="{% url 'core:fill_docx_form' item.doc_type.id %}"
+                                                               class="flex items-center gap-2 text-[15px] leading-[1.1] hover:text-[#517493] group">
+                                                                <img src="{% static 'icons/ic-document.svg' %}" alt="" class="h-4 w-4">
+                                                                <span>{{ item.name }}</span>
+                                                                <span class="ml-1 rounded px-1 py-0.5 text-[10px] font-semibold uppercase
+                                                                             bg-emerald-100 text-emerald-700 leading-none flex-shrink-0">
+                                                                    Заполнить
+                                                                </span>
+                                                            </a>
+                                                        {% else %}
+                                                            <a href="{% url 'core:start_document' item.doc_type.id %}" class="flex items-center gap-2 text-[15px] leading-[1.1] hover:text-[#517493]">
+                                                                <img src="{% static 'icons/ic-document.svg' %}" alt="" class="h-4 w-4">
+                                                                <span>{{ item.name }}</span>
+                                                            </a>
+                                                        {% endif %}
                                                     </div>
                                                 {% else %}
                                                     <div class="flex items-center gap-2 py-1 text-[15px] leading-[1.1] text-[#AA9F8D]">

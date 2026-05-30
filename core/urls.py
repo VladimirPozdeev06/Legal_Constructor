@@ -14,6 +14,11 @@ urlpatterns = [
         name="download_template_docx",
     ),
     path(
+        "document-types/<int:document_type_id>/fill/",
+        views.fill_docx_form,
+        name="fill_docx_form",
+    ),
+    path(
         "document-types/<int:document_type_id>/start/",
         views.start_document,
         name="start_document",

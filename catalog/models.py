@@ -56,6 +56,14 @@ class TemplateVersion(models.Model):
     body = models.TextField()
     is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Размеченный .docx файл с {{ переменными }} — если заполнен,
+    # используется docxtpl вместо генерации из plain text
+    docx_file = models.FileField(
+        upload_to='templates/docx/',
+        blank=True,
+        null=True,
+        verbose_name='Размеченный .docx шаблон',
+    )
 
     class Meta:
         ordering = ["-version_number"]

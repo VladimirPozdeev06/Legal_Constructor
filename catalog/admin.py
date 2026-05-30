@@ -27,6 +27,12 @@ class TemplateAdmin(admin.ModelAdmin):
 
 @admin.register(TemplateVersion)
 class TemplateVersionAdmin(admin.ModelAdmin):
-    list_display = ("template", "version_number", "is_published", "created_at")
+    list_display = ("template", "version_number", "is_published", "has_docx", "created_at")
     list_filter = ("is_published",)
     search_fields = ("template__title",)
+    readonly_fields = ("created_at",)
+    fields = ("template", "version_number", "is_published", "docx_file", "body", "created_at")
+
+    @admin.display(boolean=True, description="Есть docx")
+    def has_docx(self, obj):
+        return bool(obj.docx_file)
