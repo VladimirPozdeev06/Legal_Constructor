@@ -71,3 +71,26 @@ class TemplateVersion(models.Model):
 
     def __str__(self):
         return f"{self.template.title} v{self.version_number}"
+
+
+class TemplateAttachment(models.Model):
+    """Приложение к версии шаблона (Акт приёма-передачи, График платежей и т.п.)."""
+    template_version = models.ForeignKey(
+        TemplateVersion,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+    )
+    title = models.CharField(max_length=255, verbose_name='Название приложения')
+    docx_file = models.FileField(
+        upload_to='templates/docx/attachments/',
+        verbose_name='Файл приложения (.docx)',
+    )
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name='Порядок')
+
+    class Meta:
+        ordering = ['sort_order', 'title']
+        verbose_name = 'Приложение к шаблону'
+        verbose_name_plural = 'Приложения к шаблонам'
+
+    def __str__(self):
+        return f"{self.template_version} — {self.title}"

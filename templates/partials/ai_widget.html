@@ -338,20 +338,12 @@
             askInput.value = "";
             syncSendBtn();
             try {
-                const [askRes, searchRes] = await Promise.all([
-                    fetch(cfg.askUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-                        body: JSON.stringify({ question: q }),
-                    }),
-                    fetch(cfg.searchUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-                        body: JSON.stringify({ query: q }),
-                    }),
-                ]);
+                const askRes = await fetch(cfg.askUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+                    body: JSON.stringify({ question: q }),
+                });
                 const data = await askRes.json().catch(() => ({}));
-                const searchData = await searchRes.json().catch(() => ({}));
                 if (data.quota) {
                     quotaState = data.quota;
                     renderQuotaStrip();
@@ -360,7 +352,10 @@
                     data.answer ||
                     "В данный момент сервис недоступен. Попробуйте позже или воспользуйтесь подбором шаблона в разделе «Шаблоны».";
                 askTranscript.appendChild(bubble(escapeHtml(ans).replace(/\n/g, "<br>"), "ai-bubble-bot", false));
-                appendSuggestions(searchData);
+                // Документы берём из ответа LLM (синхронизированы с тем, что видел LLM)
+                if ((data.suggested_docs && data.suggested_docs.length) || (data.my_documents && data.my_documents.length)) {
+                    appendSuggestions({ templates: data.suggested_docs || [], my_documents: data.my_documents || [] });
+                }
                 if (data.quota_warning) {
                     const w = document.createElement("div");
                     w.className = "ai-disclaimer-inline";

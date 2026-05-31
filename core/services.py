@@ -27,7 +27,7 @@ def merge_template_body(template_body: str, values: dict[str, str]) -> str:
     return VARIABLE_RE.sub(repl, template_body or "")
 
 
-def search_document_types(query: str, limit: int = 3):
+def search_document_types(query: str, limit: int = 3, min_score: int = 0):
     q = (query or "").strip()
     if len(q) < 2:
         return []
@@ -45,50 +45,50 @@ def search_document_types(query: str, limit: int = 3):
     )
 
     def expand_search_tokens(term: str) -> list[str]:
+        """
+        Морфологическое расширение слова: корни + типичные окончания + снятие приставок.
+        Синонимы сюда НЕ добавляются — они должны быть в поле keywords документа в БД.
+        """
         t = term.strip().lower()
         if len(t) < 1:
             return []
-        out: set[str] = {t}
-        # Простая морфология: отрезаем 1–2 буквы и подставляем типичные окончания (мена→мены, рента→ренты)
         suffixes = (
-            "а",
-            "ы",
-            "е",
-            "у",
-            "ой",
-            "ою",
-            "и",
-            "ов",
-            "ом",
-            "ам",
-            "ах",
-            "ами",
-            "ю",
-            "я",
-            "к",
-            "ки",
-            "ке",
-            "ку",
-            "кой",
-            "ий",
-            "ого",
-            "ому",
-            "им",
-            "ом",
-            "ие",
-            "их",
+            "а", "ы", "е", "у", "ой", "ою", "и", "ов", "ом", "ам", "ах", "ами",
+            "ю", "я", "к", "ки", "ке", "ку", "кой", "ий", "ого", "ому", "им", "ие", "их",
         )
+        roots: set[str] = set()
+        out: set[str] = {t}
+
         if len(t) >= 3:
-            for cut in (1, 2):
+            for cut in (1, 2, 3):
                 root = t[:-cut]
-                if len(root) < 2:
+                if len(root) < 3:
                     continue
+                roots.add(root)
                 out.add(root)
                 for suf in suffixes:
                     out.add(root + suf)
-        # Ограничиваем комбинаторный взрыв
-        ranked = sorted(out, key=lambda s: (-len(s), s))
-        return ranked[:48]
+
+        # Снятие приставок: по-дарить → дарить → дар и т.д.
+        for pfx in ("по", "за", "на", "пере", "вы", "при", "от", "до", "об", "раз", "под", "у"):
+            if t.startswith(pfx) and len(t) - len(pfx) >= 3:
+                stem = t[len(pfx):]
+                roots.add(stem)
+                out.add(stem)
+                for cut in (1, 2, 3):
+                    root = stem[:-cut]
+                    if len(root) >= 3:
+                        roots.add(root)
+                        out.add(root)
+                        for suf in suffixes:
+                            out.add(root + suf)
+
+        # Корни — всегда в выборке (чтобы не обрезались лимитом)
+        long_variants = sorted(
+            (s for s in out if s not in roots),
+            key=lambda s: (-len(s), s),
+        )[:60]
+        return list(roots) + long_variants
 
     def score_doc(doc: DocumentType) -> int:
         name = (doc.name or "").lower()
@@ -99,7 +99,7 @@ def search_document_types(query: str, limit: int = 3):
         for term in terms:
             best = 0
             for variant in expand_search_tokens(term):
-                if len(variant) < 2:
+                if len(variant) < 3:
                     continue
                 if variant in name:
                     best = max(best, 14 + min(len(variant), 12))
@@ -113,7 +113,7 @@ def search_document_types(query: str, limit: int = 3):
     scored: list[tuple[int, DocumentType]] = []
     for doc in base:
         s = score_doc(doc)
-        if s > 0:
+        if s >= max(1, min_score):
             scored.append((s, doc))
     scored.sort(key=lambda x: x[0], reverse=True)
     return [d for _, d in scored[:limit]]
@@ -159,28 +159,44 @@ def is_document_request(text: str) -> bool:
     return any(marker in q for marker in DOCUMENT_INTENT_MARKERS)
 
 
-def call_openai_chat(user_message: str, timeout: float = 15.0) -> str:
+def call_openai_chat(
+    user_message: str,
+    timeout: float = 15.0,
+    context_docs=None,       # list[DocumentType] | None
+) -> str:
     q = (user_message or "").strip()
     api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
 
     if not api_key:
-        if is_document_request(q):
-            docs = search_document_types(q, limit=5)
-            if docs:
-                lines = [f"• {d.name}" for d in docs]
-                return "Найдены подходящие шаблоны:\n" + "\n".join(lines)
+        if context_docs:
+            lines = [f"• {d.name}" for d in context_docs]
+            return "Найдены подходящие шаблоны:\n" + "\n".join(lines)
         return (
             "Сервис ответа временно недоступен. Могу помочь с подбором шаблона договора по ключевым словам."
         )
 
+    # Базовый системный промпт
     system = (
         "Ты — AI-помощник сервиса КЮД (конструктор юридических документов) по вопросам недвижимости и строительства в РФ. "
-        "Отвечай кратко и по делу (2-5 предложений) на русском языке. "
-        "Если пользователь ищет договор или шаблон — назови до 3 подходящих из нашего каталога (купля-продажа, дарение, мена, рента, найм и др.). "
-        "Всегда добавляй в конце ответа: «Ответ носит справочный характер и не является юридической консультацией. "
-        "Для решения конкретной ситуации обратитесь к квалифицированному юристу.» "
-        "Если вопрос не связан с недвижимостью или строительством — вежливо откажись отвечать."
+        "Отвечай кратко и по делу (2–5 предложений) на русском языке. "
+        "Наши темы: покупка/продажа жилья, аренда, найм (снять/сдать квартиру), дарение, мена/обмен, "
+        "рента, ипотека, долевое строительство, строительный подряд, права на недвижимость — всё это наши темы. "
+        "Отказывай только если вопрос явно никак не связан с недвижимостью, строительством или юридическими документами. "
+        "Всегда добавляй в конце: «Ответ носит справочный характер и не является юридической консультацией. "
+        "Для решения конкретной ситуации обратитесь к квалифицированному юристу.»"
     )
+
+    # Если есть релевантные шаблоны — вставляем их в промпт, чтобы LLM ссылался только на них
+    if context_docs:
+        doc_lines = "\n".join(f"- {d.name}" for d in context_docs)
+        system += (
+            f"\n\nВ нашем каталоге найдены подходящие шаблоны:\n{doc_lines}\n"
+            "Если уместно — порекомендуй именно эти шаблоны (не придумывай других названий)."
+        )
+    else:
+        system += (
+            "\n\nПодходящих шаблонов в каталоге не найдено — не предлагай никаких конкретных договоров."
+        )
 
     base_url = getattr(settings, "OPENAI_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
     model = getattr(settings, "OPENAI_MODEL", "meta-llama/llama-3.1-8b-instruct:free")

@@ -448,9 +448,11 @@ def _extract_docx_text_blocks(path: str):
 
 @login_required
 def fill_docx_form(request, document_type_id):
-    """GET: форма заполнения переменных; POST: генерирует docx через docxtpl."""
+    """GET: форма заполнения переменных; POST: генерирует docx (или zip с приложениями) через docxtpl."""
+    import zipfile
     from docxtpl import DocxTemplate
     from .variables import group_variables
+    from catalog.models import TemplateAttachment
 
     document_type = get_object_or_404(DocumentType, id=document_type_id, is_active=True)
     template_version = (
@@ -466,22 +468,74 @@ def fill_docx_form(request, document_type_id):
         raise Http404("Размеченный шаблон не найден")
 
     docx_path = template_version.docx_file.path
+    attachments = list(template_version.attachments.all())
+
+    # Переменные из основного документа
     variables = _extract_docx_variables(docx_path)
+
+    # Добавляем переменные из приложений (без дублей)
+    vars_set = set(variables)
+    for att in attachments:
+        try:
+            for v in _extract_docx_variables(att.docx_file.path):
+                if v not in vars_set:
+                    variables.append(v)
+                    vars_set.add(v)
+        except Exception:
+            pass
 
     if request.method == "POST":
         context = {v: request.POST.get(v, "") for v in variables}
-        tpl = DocxTemplate(docx_path)
-        tpl.render(context)
-        output = BytesIO()
-        tpl.save(output)
-        output.seek(0)
-        filename = f"{slugify(document_type.name, allow_unicode=True)}.docx"
-        response = HttpResponse(
-            output.getvalue(),
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+        slug_name = slugify(document_type.name, allow_unicode=True)
+
+        # Выбранные приложения
+        included_atts = [
+            att for att in attachments
+            if request.POST.get(f"include_att_{att.id}") == "on"
+        ]
+
+        if not included_atts:
+            # Только основной документ — возвращаем один .docx
+            tpl = DocxTemplate(docx_path)
+            tpl.render(context)
+            output = BytesIO()
+            tpl.save(output)
+            output.seek(0)
+            filename = f"{slug_name}.docx"
+            response = HttpResponse(
+                output.getvalue(),
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        else:
+            # Основной + приложения — возвращаем ZIP
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                # Основной договор
+                tpl = DocxTemplate(docx_path)
+                tpl.render(context)
+                main_buf = BytesIO()
+                tpl.save(main_buf)
+                zf.writestr(f"{slug_name}.docx", main_buf.getvalue())
+
+                # Приложения
+                for att in included_atts:
+                    try:
+                        att_tpl = DocxTemplate(att.docx_file.path)
+                        att_tpl.render(context)
+                        att_buf = BytesIO()
+                        att_tpl.save(att_buf)
+                        att_filename = f"{slugify(att.title, allow_unicode=True)}.docx"
+                        zf.writestr(att_filename, att_buf.getvalue())
+                    except Exception:
+                        pass
+
+            zip_buffer.seek(0)
+            zip_name = f"{slug_name}.zip"
+            response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
+            response["Content-Disposition"] = f'attachment; filename="{zip_name}"'
+            return response
 
     # GET: собираем поля формы с группировкой
     text_blocks = _extract_docx_text_blocks(docx_path)
@@ -501,6 +555,7 @@ def fill_docx_form(request, document_type_id):
         "field_groups": field_groups,
         "total_fields": len(variables),
         "text_blocks": text_blocks,
+        "attachments": attachments,
     })
 
 
@@ -816,6 +871,7 @@ def ai_ask_llm(request):
             {
                 "answer": format_quota_answer(request),
                 "quota": get_ai_quota_state(request),
+                "suggested_docs": [],
             }
         )
 
@@ -824,6 +880,7 @@ def ai_ask_llm(request):
             {
                 "answer": "Не удалось распознать запрос. Сформулируйте его по теме недвижимости или строительства.",
                 "quota": quota,
+                "suggested_docs": [],
             }
         )
 
@@ -833,24 +890,73 @@ def ai_ask_llm(request):
                 "answer": limit_exhausted_answer(request),
                 "quota": quota,
                 "limited": True,
+                "suggested_docs": [],
             }
         )
 
+    # Ищем релевантные шаблоны: min_score=8 позволяет keyword-матчам работать.
+    # Синонимы не хардкодятся — добавляются в поле keywords документа через админку.
+    relevant_docs = search_document_types(question, limit=3, min_score=8)
+
+    # Поиск в документах пользователя
+    user_docs = []
+    if request.user.is_authenticated:
+        from documents.models import UserDocument
+        qs = (
+            UserDocument.objects.filter(
+                user=request.user,
+                status__in=["draft", "ready"],
+                title__icontains=question,
+            )
+            .select_related("template_version__template__document_type__domain")
+            .order_by("-updated_at")[:3]
+        )
+        user_docs = [
+            {
+                "name": d.title,
+                "updated_at": d.updated_at.strftime("%d.%m.%Y"),
+                "open_url": f"{reverse('core:cabinet')}?doc={d.id}&domain={d.template_version.template.document_type.domain.slug}",
+            }
+            for d in qs
+        ]
+
     try:
-        answer = call_openai_chat(question)
+        answer = call_openai_chat(question, context_docs=relevant_docs or None)
     except TimeoutError:
+        fallback_docs = [
+            {"name": d.name, "start_url": reverse("core:start_document", args=[d.id])}
+            for d in relevant_docs
+        ]
+        fallback_answer = (
+            "AI-сервис сейчас недоступен, но в каталоге нашлись подходящие шаблоны."
+            if relevant_docs else
+            "В данный момент сервис недоступен. Попробуйте позже или воспользуйтесь подбором шаблона в разделе «Шаблоны»."
+        )
         return JsonResponse(
             {
-                "answer": "В данный момент сервис недоступен. Попробуйте позже или воспользуйтесь подбором шаблона слева в разделе «Шаблоны».",
+                "answer": fallback_answer,
                 "quota": quota,
+                "suggested_docs": fallback_docs,
+                "my_documents": user_docs,
             }
         )
 
     increment_ai_quota(request)
     quota_after = get_ai_quota_state(request)
+
+    suggested_docs = [
+        {
+            "name": d.name,
+            "start_url": reverse("core:start_document", args=[d.id]),
+        }
+        for d in relevant_docs
+    ]
+
     payload_out = {
         "answer": answer,
         "quota": quota_after,
+        "suggested_docs": suggested_docs,
+        "my_documents": user_docs,
     }
     if 0 < quota_after["remaining"] <= 5:
         payload_out["quota_warning"] = (
