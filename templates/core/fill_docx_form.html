@@ -84,14 +84,21 @@
             {% for field in fields %}
             <div>
               <label for="id_{{ field.name }}"
-                     class="block text-xs font-medium text-brand-text mb-1">
+                     class="block text-xs font-medium text-brand-text mb-1 flex items-center gap-1.5">
                 {{ field.label }}
+                {% if field.att_id %}
+                <span class="att-optional-badge text-[10px] font-normal text-brand-beige border border-brand-line rounded px-1 py-px leading-none"
+                      data-att-id="{{ field.att_id }}">
+                  необяз.
+                </span>
+                {% endif %}
               </label>
               {% if field.field_type != "text" %}
               <select
                 id="id_{{ field.name }}"
                 name="{{ field.name }}"
-                required
+                {% if not field.att_id %}required{% endif %}
+                {% if field.att_id %}data-att-id="{{ field.att_id }}"{% endif %}
                 class="w-full rounded-lg border border-brand-line bg-white px-3 py-2
                        text-sm text-brand-text appearance-none
                        focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue
@@ -107,7 +114,8 @@
                 id="id_{{ field.name }}"
                 name="{{ field.name }}"
                 value="{{ field.value }}"
-                required
+                {% if not field.att_id %}required{% endif %}
+                {% if field.att_id %}data-att-id="{{ field.att_id }}"{% endif %}
                 class="w-full rounded-lg border border-brand-line bg-white px-3 py-2
                        text-sm text-brand-text
                        focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue
@@ -172,6 +180,24 @@
            class="hidden lg:flex flex-col flex-1 min-w-0 border-l border-brand-line">
       <div id="previewPanel" class="overflow-y-auto">
         <div class="px-5 py-5">
+
+          {# ── Вкладки (только если есть приложения) ── #}
+          {% if attachment_previews %}
+          <div class="flex items-center gap-1 mb-4 sticky top-0 bg-white py-2 -mt-2 border-b border-brand-line flex-wrap">
+            <button type="button" data-tab="main"
+                    class="preview-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
+                           bg-brand-blue text-white">
+              Договор
+            </button>
+            {% for ap in attachment_previews %}
+            <button type="button" data-tab="att_{{ ap.attachment.id }}"
+                    class="preview-tab px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                           text-brand-blue border border-brand-line hover:bg-brand-bg">
+              {{ ap.attachment.title|truncatechars:30 }}
+            </button>
+            {% endfor %}
+          </div>
+          {% else %}
           <h3 class="text-xs font-semibold uppercase tracking-widest text-brand-blue mb-4
                      flex items-center gap-2 sticky top-0 bg-white py-2 -mt-2">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -181,12 +207,34 @@
             </svg>
             Предпросмотр документа
           </h3>
-          <div class="bg-white rounded shadow-[0_2px_14px_rgba(0,0,0,0.11)] mx-2 my-2"
-               style="font-family:'Times New Roman',Times,serif;font-size:13px;line-height:1.8;padding:36px 44px;">
-            {% for block in text_blocks %}
-              <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
-            {% endfor %}
+          {% endif %}
+
+          {# ── Содержимое: основной договор ── #}
+          <div id="preview-main" class="preview-content">
+            <div class="bg-white rounded shadow-[0_2px_14px_rgba(0,0,0,0.11)] mx-2 my-2"
+                 style="font-family:'Times New Roman',Times,serif;font-size:13px;line-height:1.8;padding:36px 44px;">
+              {% for block in text_blocks %}
+                <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
+              {% endfor %}
+            </div>
           </div>
+
+          {# ── Содержимое: приложения ── #}
+          {% for ap in attachment_previews %}
+          <div id="preview-att_{{ ap.attachment.id }}" class="preview-content hidden">
+            <div class="bg-white rounded shadow-[0_2px_14px_rgba(0,0,0,0.11)] mx-2 my-2"
+                 style="font-family:'Times New Roman',Times,serif;font-size:13px;line-height:1.8;padding:36px 44px;">
+              {% if ap.blocks %}
+                {% for block in ap.blocks %}
+                  <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
+                {% endfor %}
+              {% else %}
+                <p class="text-sm text-brand-beige italic">Не удалось загрузить предпросмотр приложения.</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+
         </div>
       </div>
     </aside>
@@ -207,7 +255,7 @@
                   d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
           </svg>
-          Предпросмотр документа
+          Предпросмотр
         </h3>
         <button id="closeDrawerBtn" class="p-1.5 rounded-lg hover:bg-brand-bg transition-colors text-brand-blue">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -215,13 +263,46 @@
           </svg>
         </button>
       </div>
+      {# Вкладки в мобильном drawer #}
+      {% if attachment_previews %}
+      <div class="flex items-center gap-1 px-4 py-2 border-b border-brand-line flex-wrap flex-shrink-0">
+        <button type="button" data-tab="main"
+                class="preview-tab px-3 py-1 rounded-lg text-xs font-semibold transition-colors bg-brand-blue text-white">
+          Договор
+        </button>
+        {% for ap in attachment_previews %}
+        <button type="button" data-tab="att_{{ ap.attachment.id }}"
+                class="preview-tab px-3 py-1 rounded-lg text-xs font-medium transition-colors text-brand-blue border border-brand-line hover:bg-brand-bg">
+          {{ ap.attachment.title|truncatechars:25 }}
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
       <div class="overflow-y-auto px-3 py-3 flex-1">
-        <div class="bg-white rounded shadow-[0_1px_8px_rgba(0,0,0,0.09)]"
-             style="font-family:'Times New Roman',Times,serif;font-size:12px;line-height:1.75;padding:24px 28px;">
-          {% for block in text_blocks %}
-            <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
-          {% endfor %}
+        {# Основной договор #}
+        <div id="mob-preview-main" class="mob-preview-content">
+          <div class="bg-white rounded shadow-[0_1px_8px_rgba(0,0,0,0.09)]"
+               style="font-family:'Times New Roman',Times,serif;font-size:12px;line-height:1.75;padding:24px 28px;">
+            {% for block in text_blocks %}
+              <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
+            {% endfor %}
+          </div>
         </div>
+        {# Приложения #}
+        {% for ap in attachment_previews %}
+        <div id="mob-preview-att_{{ ap.attachment.id }}" class="mob-preview-content hidden">
+          <div class="bg-white rounded shadow-[0_1px_8px_rgba(0,0,0,0.09)]"
+               style="font-family:'Times New Roman',Times,serif;font-size:12px;line-height:1.75;padding:24px 28px;">
+            {% if ap.blocks %}
+              {% for block in ap.blocks %}
+                <p class="{{ block.css_class }}"{% if block.para_style %} style="{{ block.para_style }}"{% endif %}>{% for kind, content in block.segments %}{% if kind == "var" %}<span class="doc-var rounded px-0.5 font-medium bg-amber-50 text-amber-700 border border-amber-200" data-var="{{ content }}" style="font-family:inherit;font-style:normal;">___</span>{% elif kind == "blank" %}<span class="inline-block border-b border-gray-400 mx-px" style="min-width:1.5em;">&thinsp;</span>{% else %}{{ content }}{% endif %}{% endfor %}</p>
+              {% endfor %}
+            {% else %}
+              <p class="text-xs text-brand-beige italic">Не удалось загрузить предпросмотр.</p>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
@@ -249,9 +330,19 @@ function updatePreview() {
   document.querySelectorAll('input[type="text"], select').forEach(function(input) {
     const varName = input.name;
     const value   = input.value.trim();
+    // Для select: считаем заполненным если пользователь выбрал любой вариант
+    // (selectedIndex > 0 — любая опция кроме заглушки «— выберите —»)
+    // Для input: считаем заполненным если не пустая строка
+    const isFilled = input.tagName === 'SELECT'
+      ? input.selectedIndex > 0
+      : value !== '';
+    // Текст для подстановки: у select берём текст выбранного option
+    const displayValue = (input.tagName === 'SELECT' && input.selectedIndex > 0)
+      ? input.options[input.selectedIndex].text
+      : value;
     document.querySelectorAll('[data-var="' + varName + '"]').forEach(function(span) {
-      if (value) {
-        span.textContent = value;
+      if (isFilled) {
+        span.textContent = displayValue || '—';
         span.className = span.className
           .replace(/bg-amber-50|text-amber-700|border-amber-200/g, '')
           .trim();
@@ -281,6 +372,63 @@ function closeDrawer() { drawer.classList.add('hidden');    document.body.style.
 if (openBtn)  openBtn.addEventListener('click', openDrawer);
 if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
 if (overlay)  overlay.addEventListener('click', closeDrawer);
+
+// ── Обязательность полей приложений ──
+(function() {
+  function setAttRequired(attId, isRequired) {
+    document.querySelectorAll('[data-att-id="' + attId + '"]').forEach(function(el) {
+      if (isRequired) {
+        el.setAttribute('required', '');
+      } else {
+        el.removeAttribute('required');
+      }
+    });
+    // Бейджи "необяз." — показываем только если не обязательно
+    document.querySelectorAll('.att-optional-badge[data-att-id="' + attId + '"]').forEach(function(badge) {
+      badge.style.display = isRequired ? 'none' : '';
+    });
+  }
+
+  // Инициализация: установить начальное состояние по чекбоксам
+  document.querySelectorAll('input[type="checkbox"][name^="include_att_"]').forEach(function(cb) {
+    var attId = cb.name.replace('include_att_', '');
+    setAttRequired(attId, cb.checked);
+    cb.addEventListener('change', function() {
+      setAttRequired(attId, cb.checked);
+    });
+  });
+})();
+
+// ── Переключение вкладок предпросмотра ──
+(function() {
+  function switchTab(tabId) {
+    // десктоп
+    document.querySelectorAll('.preview-content').forEach(function(el) {
+      el.classList.add('hidden');
+    });
+    var desk = document.getElementById('preview-' + tabId);
+    if (desk) desk.classList.remove('hidden');
+    // мобайл
+    document.querySelectorAll('.mob-preview-content').forEach(function(el) {
+      el.classList.add('hidden');
+    });
+    var mob = document.getElementById('mob-preview-' + tabId);
+    if (mob) mob.classList.remove('hidden');
+    // стили кнопок
+    document.querySelectorAll('.preview-tab').forEach(function(btn) {
+      if (btn.dataset.tab === tabId) {
+        btn.classList.add('bg-brand-blue', 'text-white');
+        btn.classList.remove('text-brand-blue', 'border', 'border-brand-line', 'hover:bg-brand-bg');
+      } else {
+        btn.classList.remove('bg-brand-blue', 'text-white');
+        btn.classList.add('text-brand-blue', 'border', 'border-brand-line', 'hover:bg-brand-bg');
+      }
+    });
+  }
+  document.querySelectorAll('.preview-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+  });
+})();
 
 // ── Кнопка submit ──
 document.getElementById('docxForm').addEventListener('submit', function() {

@@ -472,8 +472,11 @@ def fill_docx_form(request, document_type_id):
 
     # Переменные из основного документа
     variables = _extract_docx_variables(docx_path)
+    main_vars_set = set(variables)
 
     # Добавляем переменные из приложений (без дублей)
+    # var_to_att: переменные, которые есть ТОЛЬКО в приложении (нет в основном)
+    var_to_att: dict[str, int] = {}
     vars_set = set(variables)
     for att in attachments:
         try:
@@ -481,6 +484,7 @@ def fill_docx_form(request, document_type_id):
                 if v not in vars_set:
                     variables.append(v)
                     vars_set.add(v)
+                    var_to_att[v] = att.id  # эксклюзивная переменная приложения
         except Exception:
             pass
 
@@ -549,13 +553,29 @@ def fill_docx_form(request, document_type_id):
                 var_order.append(_content)
                 _seen.add(_content)
 
+    # Блоки предпросмотра для приложений
+    attachment_previews = []
+    for att in attachments:
+        try:
+            att_blocks = _extract_docx_text_blocks(att.docx_file.path)
+        except Exception:
+            att_blocks = []
+        attachment_previews.append({"attachment": att, "blocks": att_blocks})
+
     field_groups = group_variables(variables, request.POST, var_order=var_order)
+
+    # Помечаем поля, которые есть только в приложениях
+    for _sec, _fields in field_groups:
+        for _field in _fields:
+            _field['att_id'] = var_to_att.get(_field['name'])  # None = поле основного договора
+
     return render(request, "core/fill_docx_form.html", {
         "document_type": document_type,
         "field_groups": field_groups,
         "total_fields": len(variables),
         "text_blocks": text_blocks,
         "attachments": attachments,
+        "attachment_previews": attachment_previews,
     })
 
 
