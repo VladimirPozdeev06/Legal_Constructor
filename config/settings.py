@@ -54,9 +54,35 @@ LEGAL_DOCUMENT_PATHS = {
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-&wk5bc_hk)ylnp_lm^ykrqd9!fh%7nhvhnrvk0o(^@8%enrp_!")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Локально DEBUG=True (по умолчанию). На хостинге задать переменную DJANGO_DEBUG=False.
+DEBUG = os.environ.get("DJANGO_DEBUG", "True").strip().lower() in ("1", "true", "yes", "on")
 
-ALLOWED_HOSTS = []
+# Хосты, которым разрешено обслуживать сайт (через запятую в переменной ALLOWED_HOSTS).
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()
+]
+# Render автоматически отдаёт имя хоста в этой переменной — добавляем его.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Доверенные источники для CSRF (POST-формы по HTTPS — Django 4+ требует явно).
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
+# За обратным прокси хостинга доверяем заголовку протокола (для HTTPS / secure cookies).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Доп. безопасность только в продакшене (хостинг отдаёт сайт по HTTPS).
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 3600
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 
 # Application definition
@@ -76,6 +102,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise отдаёт статику в продакшене (строго после SecurityMiddleware).
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -151,6 +179,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# Куда collectstatic собирает статику для продакшена (WhiteNoise отдаёт отсюда).
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 # Media (загружаемые файлы: размеченные .docx шаблоны)
 MEDIA_URL = '/media/'
