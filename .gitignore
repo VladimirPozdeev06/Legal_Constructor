@@ -17,6 +17,8 @@ media/**
 !media/templates/
 !media/templates/docx/
 !media/templates/docx/*.docx
+!media/templates/docx/attachments/
+!media/templates/docx/attachments/*.docx
 
 # IDE
 .idea/

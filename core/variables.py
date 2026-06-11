@@ -316,6 +316,218 @@ VARIABLE_LABELS: dict[str, str] = {
     # Паспортные данные найма (полная дата выдачи)
     "pasport_data_vid_namodatel": "Дата выдачи паспорта Наймодателя",
     "pasport_data_vid_nanimatel": "Дата выдачи паспорта Нанимателя",
+
+    # ── Метки из «таблицы разметки» юриста (договоры по отчуждению) ─────
+    "adres_cedent":                "Адрес цедента",
+    "adres_cedent_dop":            "Адрес цедента",
+    "adres_cessionarij":           "Адрес цессионария",
+    "adres_daritel":               "Адрес дарителя",
+    "adres_doma":                  "Адрес многоквартирного дома",
+    "adres_platelschik_renty":     "Адрес плательщика ренты",
+    "adres_prozhivaniya_prodavec": "Адрес проживания продавца на момент акта",
+    "bank_cedent":                 "Банк цедента",
+    "bank_cessionarij":            "Банк цессионария",
+    "bik_cedent":                  "БИК цедента",
+    "bik_cessionarij":             "БИК цессионария",
+    "data_dogovora":               "Дата договора",
+    "data_egrn":                   "Дата выписки ЕГРН",
+    "data_soglasiya_supruga":      "Дата согласия супруга",
+    "data_vydachi":                "Дата выдачи",
+    "ddu_den":                     "День заключения ДДУ",
+    "ddu_god":                     "Год заключения ДДУ",
+    "ddu_mesyac":                  "Месяц заключения ДДУ",
+    "ddu_nomer":                   "Номер ДДУ",
+    "den_akta":                    "День подписания акта (число)",
+    "den_rozhd_daritel":           "День рождения дарителя",
+    "den_rozhd_platelschik_renty": "День рождения плательщика ренты",
+    "den_rozhd_zaregistrirovannykh_lits": "День рождения зарегестрированного лица",
+    "email_cedent":                "E-mail цедента",
+    "email_cessionarij":           "E-mail цессионария",
+    "email_platelschik_renty":     "E-mail плательщика ренты",
+    "email_poluchatel_renty":      "E-mail получателя ренты",
+    "fio_cedent":                  "Ф.И.О. цедента",
+    "fio_cessionarij":             "Ф.И.О. цессионария",
+    "fio_daritel":                 "Фио дарителя",
+    "fio_notariusa":               "Ф.И.О. нотариуса",
+    "fio_platelschik_renty":       "Ф.И.О. плательщика ренты",
+    "fio_poluchatel_renty":        "Ф.И.О. получателя ренты",
+    "fio_zaregistrirovannykh_lits": "Ф.И.О. зарегестрированного лица",
+    "god_akta":                    "Год подписания акта",
+    "god_rozhd_daritel":           "Год рождения дарителя",
+    "god_rozhd_platelschik_renty": "Год рождения плательщика ренты",
+    "god_rozhd_zaregistrirovannykh_lits": "Год рождения зарегестрированного лица",
+    "inn_cedent":                  "ИНН цедента",
+    "inn_cessionarij":             "ИНН цессионария",
+    "inye_dokumenty":              "Иные передаваемые документы",
+    "kadastrovyj_nomer_uchastka":  "Кадастровый номер земельного участка",
+    "kolichestvo_etazhey":         "Количество этажей",
+    "kpp_cedent":                  "КПП цедента",
+    "kpp_cessionarij":             "КПП цессионария",
+    "ks_cedent":                   "Корреспондентский счёт цедента",
+    "ks_cessionarij":              "Корреспондентский счёт цессионария",
+    "mesto_rozhd_daritel":         "Место рождения дарителя",
+    "mesto_rozhd_platelschik_renty": "Место рождения плательщика ренты",
+    "mesyac_akta":                 "Месяц подписания акта",
+    "mesyac_rozhd_daritel":        "Месяц рождения дарителя",
+    "mesyac_rozhd_platelschik_renty": "Месяц рождения плательщика ренты",
+    "mesyac_rozhd_zaregistrirovannykh_lits": "Месяц рождения зарегестрированного лица",
+    "naimenovanie_cedent":         "Наименование / Ф.И.О. цедента",
+    "naimenovanie_cessionarij":    "Наименование / Ф.И.О. цессионария",
+    "naimenovanie_i_rekvizity_pravoustanavlivayushchego_dokumenta": "Наименование и реквизиты правоустанавливающего документа",
+    "naimenovanie_organa_registratsii_prav": "Наименование органа регистрации прав",
+    "naimenovanie_vydavshego_organa": "Наименование выдавшего органа",
+    "naimenovanie_zastrojshhik":   "Наименование застройщика",
+    "naselennyj_punkt":            "Населённый пункт",
+    "nomer_akt_app":               "Номер приложения (акт приёма-передачи)",
+    "nomer_pril_akt_priema":       "Номер приложения — акт приёма-передачи",
+    "nomer_pril_akt_raschet":      "Номер приложения — акт о взаиморасчётах",
+    "oblast":                      "Область",
+    "obshaya_ploshhad_prop":       "Общая площадь (прописью)",
+    "ogrn_cedent":                 "ОГРН/ОГРНИП цедента",
+    "ogrn_cessionarij":            "ОГРН/ОГРНИП цессионария",
+    "okonch_act_cessionarij":      "Окончание в «действующий» для цессионария",
+    "okonch_daritel":              "Окончание (зарегистрирован / зарегистрирована)",
+    "okonch_im_cessionarij":       "Окончание в «именуемый» для цессионария",
+    "okonch_im_daritel":           "Окончание в именовании дарителя",
+    "okonch_im_zastrojshhik":      "Окончание в «именуемый» для застройщика",
+    "okonch_platelschik_renty":    "Окончание в именовании плательщика ренты",
+    "okpo_cedent":                 "ОКПО цедента",
+    "okpo_cessionarij":            "ОКПО цессионария",
+    "organ_registracii":           "Наименование органа регистрации прав",
+    "osnovanie_polnomochij_cedent": "Основание полномочий цедента",
+    "osnovanie_polnomochij_cessionarij": "Основание полномочий цессионария",
+    "osnovanie_stroitelstva":      "Основание строительства",
+    "pasport_cedent":              "Паспортные данные цедента",
+    "pasport_cedent_dop":          "Паспортные данные цедента (доп. строка)",
+    "pasport_cessionarij":         "Паспортные данные цессионария",
+    "pasport_cessionarij_dop":     "Паспортные данные цессионария",
+    "pasport_kod_platelschik_renty": "Код подразделения плательщика ренты",
+    "pasport_kod_prodavets":       "Код подразделения (Продавец)",
+    "pasport_nomer_daritel":       "Номер паспорта дарителя",
+    "pasport_nomer_platelschik_renty": "Номер паспорта плательщика ренты",
+    "pasport_seriya_daritel":      "Серия паспорта дарителя",
+    "pasport_seriya_platelschik_renty": "Серия паспорта плательщика ренты",
+    "pasport_vidan_daritel":       "Когда паспорт выдан",
+    "pasport_vidan_platelschik_renty": "Выдан паспорт плательщика ренты",
+    "pasport_vydan_data_pokupatel": "Дата выдачи паспорта покупателя",
+    "pasport_vydan_data_prodavec": "Дата выдачи паспорта продавца",
+    "pasport_vydan_kem_pokupatel": "Кем выдан паспорт покупателя",
+    "pasport_vydan_kem_prodavec":  "Кем выдан паспорт продавца",
+    "platezh_den":                 "День платежа (число)",
+    "platezh_god":                 "Год платежа",
+    "platezh_mesyac":              "Месяц платежа",
+    "platezhka_den":               "День платёжного поручения (число)",
+    "platezhka_god":               "Год платёжного поручения",
+    "platezhka_mesyac":            "Месяц платёжного поручения",
+    "platezhka_nomer":             "Номер платёжного поручения",
+    "ploshhad_uchastka":           "Площадь земельного участка",
+    "podpis_cedent":               "Подпись цедента",
+    "podpis_cessionarij":          "Подпись цессионария",
+    "podpis_platelschika_renty":   "Подпись плательщика ренты",
+    "podpis_pokupatel":            "Подпись покупателя",
+    "podpis_poluchatelya_renty":   "Подпись получателя ренты",
+    "podpis_prodavec":             "Подпись продавца",
+    "pol_daritel":                 "Пол ( где гражданин / гражданка) дарителя",
+    "pol_platelschik_renty":       "Пол ( где гражданин / гражданка) плательщика ренты",
+    "pol_poluchatel_renty":        "Пол ( где гражданин / гражданка) получатель ренты",
+    "pol_zaregistrirovannykh_lits": "Пол ( где гражданин / гражданка) зарегестрированное лицо",
+    "pravoustanavlivayushhij_dokument": "Правоустанавливающий документ",
+    "predstavitel_cedent":         "Должность, Ф.И.О. представителя цедента",
+    "predstavitel_cessionarij":    "Должность, Ф.И.О. представителя цессионария",
+    "punkt_ddu_peredacha":         "Пункт ДДУ о передаче объекта",
+    "punkt_ddu_uvedomlenie":       "Пункт ДДУ об уведомлении застройщика",
+    "registracionnyj_nomer_egrn":  "Регистрационный номер ЕГРН",
+    "rs_cedent":                   "Расчётный счёт цедента",
+    "rs_cessionarij":              "Расчётный счёт цессионария",
+    "rs_platelschik_renty":        "Счет плательщика ренты",
+    "rs_poluchatel_renty":         "Счет получателя ренты",
+    "schet_cedent":                "Счёт цедента",
+    "schet_cessionarij":           "Счёт цессионария",
+    "srok_oplaty_den":             "День срока оплаты",
+    "srok_oplaty_dnej":            "Срок оплаты, дней (цифрой)",
+    "srok_oplaty_dnej_prop":       "Срок оплаты, дней (прописью)",
+    "srok_oplaty_god":             "Год срока оплаты",
+    "srok_oplaty_mesyac":          "Месяц срока оплаты",
+    "srok_peredachi_dokumentov":   "Срок передачи документов",
+    "srok_registracii":            "Срок регистрации договора",
+    "srok_uvedomleniya":           "Срок уведомления застройщика",
+    "storona_registracii":         "Сторона, осуществляющая регистрацию",
+    "telefon_cedent":              "Телефон цедента",
+    "telefon_cessionarij":         "Телефон цессионария",
+    "telefon_platelschik_renty":   "Телефон плательщика ренты",
+    "telefon_poluchatel_renty":    "Телефон получателя ренты",
+    "udostoveritelnaya_nadpis_notariusa": "Удостоверительная надпись нотариуса",
+    "ulica":                       "Улица",
+    "zhilaya_ploshhad_prop":       "Жилая площадь (прописью)",
+}
+
+
+# Автосборка меток: префикс поля + роль стороны (родительный падеж).
+# Покрывает переменные вида fio_prodavets, pasport_kod_odaryaemyj и т.п.
+# без ручного перечисления — новые шаблоны подхватываются автоматически.
+_LABEL_PREFIXES: list[tuple[str, str]] = [
+    ("pasport_data_vid", "Дата выдачи паспорта"),
+    ("pasport_seriya",   "Серия паспорта"),
+    ("pasport_nomer",    "Номер паспорта"),
+    ("pasport_vidan",    "Кем выдан паспорт"),
+    ("pasport_vydan_data", "Дата выдачи паспорта"),
+    ("pasport_vydan_kem", "Кем выдан паспорт"),
+    ("pasport_kod",      "Код подразделения"),
+    ("pasport",          "Паспортные данные"),
+    ("den_rozhd",        "День рождения"),
+    ("mesyac_rozhd",     "Месяц рождения"),
+    ("god_rozhd",        "Год рождения"),
+    ("mesto_rozhd",      "Место рождения"),
+    ("okonch_im",        "Именуем-ый/-ая:"),
+    ("okonch_act",       "Действующ-его/-ей:"),
+    ("okonch_zaregistrirovan", "Зарегистрирован/-а:"),
+    ("okonch",           "Окончание (-/-а):"),
+    ("pol",              "Гражданин/Гражданка:"),
+    ("suf",              "Гражданин/Гражданка:"),
+    ("fio_podpis",       "ФИО в подписи"),
+    ("fio",              "ФИО"),
+    ("adres_registracii", "Адрес регистрации"),
+    ("adres_prozhivaniya", "Адрес проживания"),
+    ("adres",            "Адрес"),
+    ("telefon",          "Телефон"),
+    ("email",            "Email"),
+    ("schet",            "Счёт"),
+    ("rs",               "Расчётный счёт"),
+    ("ks",               "Корр. счёт"),
+    ("bank",             "Банк"),
+    ("bik",              "БИК"),
+    ("inn",              "ИНН"),
+    ("kpp",              "КПП"),
+    ("ogrn",             "ОГРН/ОГРНИП"),
+    ("okpo",             "ОКПО"),
+    ("podpis",           "Подпись"),
+    ("naimenovanie",     "Наименование / ФИО"),
+    ("predstavitel",     "Представитель"),
+    ("osnovanie_polnomochij", "Основание полномочий"),
+]
+
+_LABEL_ROLES: dict[str, str] = {
+    "prodavets": "Продавца",
+    "prodavec": "Продавца",
+    "prodavca": "Продавца",
+    "pokupatel": "Покупателя",
+    "pokupatelja": "Покупателя",
+    "daritel": "Дарителя",
+    "odaryaemyj": "Одаряемого",
+    "storona1": "Стороны 1",
+    "storona2": "Стороны 2",
+    "poluchatel_renty": "Получателя ренты",
+    "poluchatelya_renty": "Получателя ренты",
+    "platelschik_renty": "Плательщика ренты",
+    "platelschika_renty": "Плательщика ренты",
+    "cedent": "Цедента",
+    "cessionarij": "Цессионария",
+    "zastrojshhik": "Застройщика",
+    "namodatel": "Наймодателя",
+    "nanimatel": "Нанимателя",
+    "ssudodatel": "Ссудодателя",
+    "ssudopoluchatel": "Ссудополучателя",
+    "zaregistrirovannykh_lits": "зарегистрированных лиц",
 }
 
 
@@ -323,54 +535,48 @@ def get_label(var_name: str) -> str:
     """Возвращает русский ярлык для переменной или красивое имя по умолчанию."""
     if var_name in VARIABLE_LABELS:
         return VARIABLE_LABELS[var_name]
+    # Автосборка: префикс + роль (fio_prodavets → «ФИО Продавца»)
+    v = var_name.lower()
+    for prefix, prefix_label in _LABEL_PREFIXES:
+        if v.startswith(prefix + "_"):
+            role = v[len(prefix) + 1:]
+            if role in _LABEL_ROLES:
+                return f"{prefix_label} {_LABEL_ROLES[role]}"
     # Fallback: превращаем snake_case в читаемую строку
     return var_name.replace('_', ' ').capitalize()
 
 
 # ── Типы полей для спец-рендеринга ───────────────────────────────────────────
-
-# pol_* → select «Мужской» / «Женский» → значение «ин» / «ка»
-_GENDER_INK_FIELDS: frozenset[str] = frozenset({
-    'pol_prodavec', 'pol_pokupatel', 'pol_namodatel', 'pol_nanimatel',
-    'pol_ssudodatel', 'pol_ssudopoluchatel', 'pol_storona1', 'pol_storona2',
-})
-
-# Гражданин/ка → select → «Гражданин» / «Гражданка»
-_SUFFIX_FIELDS: frozenset[str] = frozenset({
-    'suf_prodavec',
-})
-
-# Именуем_ → select → «ый» / «ая»
-_OKONCH_IM_FIELDS: frozenset[str] = frozenset({
-    'okonch_im_prodavec', 'okonch_im_pokupatel',
-    'okonch_im_storona1', 'okonch_im_storona2',
-})
-
-# Зарегистрирован_ → select → «» / «а»
-_OKONCH_FIELDS: frozenset[str] = frozenset({
-    'okonch_prodavec', 'okonch_pokupatel',
-    'okonch_namodatel', 'okonch_nanimatel',
-    'okonch_ssudodatel', 'okonch_ssudopoluchatel',
-})
+# Тип определяется по префиксу имени переменной — новые шаблоны подхватываются
+# автоматически, без правки кода.
 
 # Тип поля → (display_label, docx_value)[]
 FIELD_OPTIONS: dict[str, list[tuple[str, str]]] = {
     'gender_ink':  [('Мужской', 'ин'),         ('Женский', 'ка')],
     'suffix':      [('Гражданин', 'Гражданин'), ('Гражданка', 'Гражданка')],
     'okonch_im':   [('Мужской (-ый)', 'ый'),   ('Женский (-ая)', 'ая')],
+    'okonch_act':  [('Мужской (-его)', 'его'), ('Женский (-ей)', 'ей')],
     'okonch':      [('Мужской (-)', ''),        ('Женский (-а)', 'а')],
 }
 
 
 def get_field_type(var_name: str) -> str:
-    """Возвращает тип поля: 'text' | 'gender_ink' | 'suffix' | 'okonch_im' | 'okonch'."""
-    if var_name in _GENDER_INK_FIELDS:
+    """Возвращает тип поля: 'text' | 'gender_ink' | 'suffix' | 'okonch_im' | 'okonch_act' | 'okonch'."""
+    v = var_name.lower()
+    # pol_* → «Граждан-ин/-ка»
+    if v.startswith('pol_'):
         return 'gender_ink'
-    if var_name in _SUFFIX_FIELDS:
+    # suf_* → «Гражданин» / «Гражданка» (слово целиком)
+    if v.startswith('suf_'):
         return 'suffix'
-    if var_name in _OKONCH_IM_FIELDS:
+    # okonch_im_* → «именуем-ый/-ая»
+    if v.startswith('okonch_im_'):
         return 'okonch_im'
-    if var_name in _OKONCH_FIELDS:
+    # okonch_act_* → «действующ-его/-ей»
+    if v.startswith('okonch_act_'):
+        return 'okonch_act'
+    # okonch_* → «зарегистрирован-/-а»
+    if v.startswith('okonch_'):
         return 'okonch'
     return 'text'
 
@@ -399,12 +605,18 @@ def _classify(var: str) -> str:
     if v in ("nomer_dogovora", "gorod", "den", "mesyac", "god"):
         return "Реквизиты договора"
 
-    # Стороны 1 (продавец / наймодатель / ссудодатель / сторона1)
-    if any(k in v for k in ("_prodavec", "_storona1", "_namodatel", "_ssudodatel")):
+    # Стороны 1 (продавец / даритель / получатель ренты / цедент / наймодатель / …)
+    if any(k in v for k in (
+        "_prodavec", "_prodavets", "_prodavca", "_storona1", "_namodatel",
+        "_ssudodatel", "_daritel", "_poluchatel_renty", "_poluchatelya_renty", "_cedent",
+    )):
         return "Продавец / Наймодатель / Ссудодатель / Сторона 1"
 
-    # Стороны 2 (покупатель / наниматель / ссудополучатель / сторона2)
-    if any(k in v for k in ("_pokupatel", "_storona2", "_nanimatel", "_ssudopoluchatel")):
+    # Стороны 2 (покупатель / одаряемый / плательщик ренты / цессионарий / …)
+    if any(k in v for k in (
+        "_pokupatel", "_storona2", "_nanimatel", "_ssudopoluchatel",
+        "_odaryaemyj", "_platelschik_renty", "_platelschika_renty", "_cessionarij",
+    )):
         return "Покупатель / Наниматель / Ссудополучатель / Сторона 2"
 
     # Квартира 1 мены
