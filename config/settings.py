@@ -139,6 +139,13 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # Устойчивость к конкурентной записи (несколько пользователей одновременно):
+        # WAL + увеличенный таймаут блокировки убирают ошибки "database is locked".
+        'OPTIONS': {
+            'timeout': 20,
+            'transaction_mode': 'IMMEDIATE',
+            'init_command': 'PRAGMA journal_mode=WAL;',
+        },
     }
 }
 
