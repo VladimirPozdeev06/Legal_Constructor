@@ -17,7 +17,7 @@
                 <img src="{% static 'icons/ic-ai.svg' %}" alt="" class="ai-panel-title-icon">
                 AI-помощник
             </strong>
-            <button type="button" class="ai-close" id="aiCloseBtn" aria-label="Закрыть">⛶</button>
+            <button type="button" class="ai-close" id="aiCloseBtn" aria-label="Закрыть">✕</button>
         </div>
         <p class="ai-disclaimer">Не является полноценной заменой юриста</p>
 
@@ -116,6 +116,15 @@
     }
     .ai-quota-strip:empty {
         display: none;
+    }
+    .ai-thinking {
+        color: #16344f;
+        font-style: italic;
+        animation: ai-thinking-pulse 1.1s ease-in-out infinite;
+    }
+    @keyframes ai-thinking-pulse {
+        0%, 100% { opacity: 0.45; }
+        50% { opacity: 0.9; }
     }
 </style>
 
@@ -324,7 +333,7 @@
                     false
                 )
             );
-            askTranscript.appendChild(bubble("М  не нужно", "ai-bubble-user", true));
+            askTranscript.appendChild(bubble("Мне нужно", "ai-bubble-user", true));
         }
 
         askSubmit?.addEventListener("click", async function () {
@@ -337,6 +346,11 @@
             askTranscript.appendChild(bubble(escapeHtml(q).replace(/\n/g, "<br>"), "ai-bubble-user", true));
             askInput.value = "";
             syncSendBtn();
+            const thinkingEl = document.createElement("div");
+            thinkingEl.className = "ai-bubble ai-bubble-bot ai-thinking";
+            thinkingEl.textContent = "Думаю над ответом…";
+            askTranscript.appendChild(thinkingEl);
+            askTranscript.scrollTop = askTranscript.scrollHeight;
             try {
                 const askRes = await fetch(cfg.askUrl, {
                     method: "POST",
@@ -344,6 +358,7 @@
                     body: JSON.stringify({ question: q }),
                 });
                 const data = await askRes.json().catch(() => ({}));
+                thinkingEl.remove();
                 if (data.quota) {
                     quotaState = data.quota;
                     renderQuotaStrip();
@@ -375,6 +390,7 @@
                     askTranscript.appendChild(wrap);
                 }
             } catch {
+                thinkingEl.remove();
                 askTranscript.appendChild(
                     bubble(
                         escapeHtml(

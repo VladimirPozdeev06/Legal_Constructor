@@ -631,3 +631,28 @@ h2 { text-align: center; font-size: 42px; margin: 36px 0 22px; text-transform: u
         height: 109px;
     }
 }
+
+/* ── Телефон: AI-панель на весь экран, крестик всегда виден ── */
+@media (max-width: 640px) {
+    .ai-panel {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+        width: auto;
+        height: auto;
+        max-width: none;
+        margin: 0;
+        border-radius: 16px;
+    }
+    .ai-panel-title { font-size: 20px; }
+    .ai-close {
+        width: 40px;
+        height: 40px;
+        font-size: 22px;
+        background: rgba(243, 240, 234, 0.16);
+    }
+    .ai-fab { width: 84px; height: 84px; }
+    .ai-fab-icon { width: 82px; height: 82px; }
+}
