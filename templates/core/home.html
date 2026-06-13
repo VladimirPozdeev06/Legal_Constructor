@@ -5,31 +5,31 @@
 
 {% block content %}
 <main class="figma-page-bg relative min-h-screen text-[#022E4C]" style="overflow-x: clip;">
-    <header class="sticky top-0 z-50 bg-[#FCFBFA]/95 backdrop-blur-sm">
+    <header class="app-header sticky top-0 z-50 bg-[#FCFBFA]/95 backdrop-blur-sm">
         <div class="mx-auto flex w-[min(1680px,92vw)] items-center justify-between gap-4 py-5">
             <a href="{% url 'core:home' %}" class="flex items-center gap-3">
-                <img src="{% static 'img/logo.svg' %}" alt="КЮД" class="h-14 w-auto">
-                <span class="font-display text-[24px] font-bold uppercase leading-[0.75] text-[#022E4C] whitespace-nowrap">Конструктор<br>юридических документов</span>
+                <img src="{% static 'img/logo.svg' %}" alt="КЮД" class="app-brand-logo h-14 w-auto">
+                <span class="app-brand-text font-display text-[24px] font-bold uppercase leading-[0.75] text-[#022E4C] whitespace-nowrap">Конструктор<br>юридических документов</span>
             </a>
             <nav class="hidden items-center gap-6 px-8 py-[17px] text-[20px] font-bold uppercase leading-[1.4] xl:flex">
                 <a href="#advantages" class="transition hover:text-[#517493] active:text-[#56061D]">Преимущества</a>
                 <a href="#templates" class="transition hover:text-[#517493] active:text-[#56061D]">Шаблоны</a>
                 <a href="#pricing" class="transition hover:text-[#517493] active:text-[#56061D]">Тарифы</a>
             </nav>
-            <div class="flex items-center gap-3">
-                <button type="button" id="homeAiOpen" class="rounded-[12px] bg-[#517493] px-12 py-3 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">AI-помощник</button>
-                <a href="{% url 'accounts:login' %}" class="rounded-[12px] bg-[#56061D] px-12 py-3 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#963C56] active:bg-[#762139]">Войти</a>
+            <div class="app-nav-btns flex items-center gap-3">
+                <button type="button" id="homeAiOpen" class="app-nav-btn rounded-[12px] bg-[#517493] px-12 py-3 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">AI-помощник</button>
+                <a href="{% url 'accounts:login' %}" class="app-nav-btn rounded-[12px] bg-[#56061D] px-12 py-3 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#963C56] active:bg-[#762139]">Войти</a>
             </div>
         </div>
     </header>
 
-    <section class="relative z-10 mx-auto flex h-[917px] w-[min(1680px,92vw)] flex-col items-center justify-center gap-14">
-        <h1 class="text-center font-display text-[64px] uppercase leading-[1] text-[#022E4C]">Конструктор<br>юридических документов</h1>
-        <p class="max-w-[1100px] text-center text-[32px] leading-[1] text-[#022E4C]">Инструмент для частных лиц, предпринимателей, менеджеров, собственников, подрядчиков, юристов и редакторов. Включает подбор документа, сбор данных, генерацию по шаблону, редактирование и экспорт в DOCX.</p>
-        <div class="mx-auto w-[1426px] max-w-full">
+    <section class="app-hero relative z-10 mx-auto flex h-[917px] w-[min(1680px,92vw)] flex-col items-center justify-center gap-14">
+        <h1 class="app-hero-h1 text-center font-display text-[64px] uppercase leading-[1] text-[#022E4C]">Конструктор<br>юридических документов</h1>
+        <p class="app-hero-p max-w-[1100px] text-center text-[32px] leading-[1] text-[#022E4C]">Инструмент для частных лиц, предпринимателей, менеджеров, собственников, подрядчиков, юристов и редакторов. Включает подбор документа, сбор данных, генерацию по шаблону, редактирование и экспорт в DOCX.</p>
+        <div class="app-hero-illust mx-auto w-[1426px] max-w-full">
             <img src="{% static 'img/illustration.svg' %}" alt="Иллюстрация сервиса" class="w-full">
         </div>
-        <div class="flex justify-center">
+        <div class="app-hero-cta flex justify-center">
             <a href="{% url 'accounts:login' %}" class="inline-flex w-[300px] items-center justify-center rounded-[12px] bg-[#56061D] px-12 py-5 text-[24px] font-bold uppercase leading-[1.4] text-[#F3F0EA] transition hover:bg-[#963C56] active:bg-[#762139]">Начать работу</a>
         </div>
     </section>

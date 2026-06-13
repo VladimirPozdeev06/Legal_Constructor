@@ -4,17 +4,17 @@
 {% block content %}
 <main class="figma-page-bg text-[#022E4C]" style="overflow-x: clip;">
     <div class="mx-auto flex min-h-screen w-[min(1920px,100vw)] flex-col gap-6 px-[120px] pb-3 pt-6 max-[1280px]:px-8">
-        <header class="sticky top-0 z-50 flex items-center justify-between gap-6 bg-[#FCFBFA]/95 backdrop-blur-sm">
+        <header class="app-header sticky top-0 z-50 flex items-center justify-between gap-6 bg-[#FCFBFA]/95 backdrop-blur-sm">
             <a href="{% url 'core:home' %}" class="flex flex-1 items-center gap-1">
-                <img src="{% static 'img/logo.svg' %}" alt="КЮД" class="h-12 w-auto">
-                <span class="font-display text-[24px] font-bold uppercase leading-[0.75]">Конструктор<br>юридических документов</span>
+                <img src="{% static 'img/logo.svg' %}" alt="КЮД" class="app-brand-logo h-12 w-auto">
+                <span class="app-brand-text font-display text-[24px] font-bold uppercase leading-[0.75]">Конструктор<br>юридических документов</span>
             </a>
-            <div class="flex items-center gap-6 max-[900px]:flex-wrap max-[900px]:justify-end">
-                <a href="{% url 'core:my_documents' %}" class="inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Мои документы</a>
-                <a href="{% url 'core:my_documents' %}" class="inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Профиль</a>
+            <div class="app-nav-btns flex items-center gap-6 max-[900px]:flex-wrap max-[900px]:justify-end">
+                <a href="{% url 'core:my_documents' %}" class="app-nav-btn inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Мои документы</a>
+                <a href="{% url 'core:my_documents' %}" class="app-nav-btn inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Профиль</a>
                 <form method="post" action="{% url 'accounts:logout' %}">
                     {% csrf_token %}
-                    <button type="submit" class="inline-flex h-12 items-center justify-center rounded-[12px] bg-[#56061D] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#963C56] active:bg-[#762139]">Выйти</button>
+                    <button type="submit" class="app-nav-btn inline-flex h-12 items-center justify-center rounded-[12px] bg-[#56061D] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#963C56] active:bg-[#762139]">Выйти</button>
                 </form>
             </div>
         </header>
