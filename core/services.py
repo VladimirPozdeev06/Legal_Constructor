@@ -208,7 +208,7 @@ def call_openai_chat(
             {"role": "user", "content": q},
         ],
         "temperature": 0.4,
-        "max_tokens": 400,
+        "max_tokens": 700,
     }
 
     data = json.dumps(payload).encode("utf-8")
