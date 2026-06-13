@@ -78,7 +78,7 @@
                 </div>
             </aside>
 
-            <section class="rounded-xl bg-[#F9F7F5] p-6 shadow-[0_0_48px_rgba(198,180,172,0.2)]">
+            <section id="workspace-section" style="scroll-margin-top: 90px;" class="rounded-xl bg-[#F9F7F5] p-6 shadow-[0_0_48px_rgba(198,180,172,0.2)]">
                 {% if workspace %}
                     {% with doc=workspace.document %}
                         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -181,6 +181,25 @@
         </footer>
     </div>
 </main>
+
+{% if workspace %}
+<script>
+    // На узких экранах (одна колонка) прокручиваем к разделу «Работа с документом»,
+    // чтобы выбранный документ не терялся внизу под каталогом.
+    (function () {
+        if (window.innerWidth >= 1280) return;
+        function go() {
+            var ws = document.getElementById("workspace-section");
+            if (ws) ws.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        if (document.readyState === "complete") {
+            setTimeout(go, 120);
+        } else {
+            window.addEventListener("load", function () { setTimeout(go, 120); });
+        }
+    })();
+</script>
+{% endif %}
 
 {% if workspace %}
 {{ workspace.template_body|json_script:"workspace-template-body" }}
