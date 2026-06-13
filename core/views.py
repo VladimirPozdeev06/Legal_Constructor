@@ -832,6 +832,23 @@ def my_documents(request):
     return render(request, "core/my_documents.html", {"documents": docs})
 
 
+def _doc_action_url(document_type) -> str:
+    """Ссылка на документ: форма заполнения (если шаблон размечен .docx) или старый старт."""
+    has_docx = (
+        TemplateVersion.objects.filter(
+            template__document_type=document_type,
+            template__is_active=True,
+            is_published=True,
+        )
+        .exclude(docx_file="")
+        .exclude(docx_file=None)
+        .exists()
+    )
+    if has_docx:
+        return reverse("core:fill_docx_form", args=[document_type.id])
+    return reverse("core:start_document", args=[document_type.id])
+
+
 def ai_search_documents(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
@@ -845,7 +862,7 @@ def ai_search_documents(request):
             "id": d.id,
             "name": d.name,
             "description": d.short_description or "",
-            "start_url": reverse("core:start_document", args=[d.id]),
+            "start_url": _doc_action_url(d),
         }
         for d in template_results
     ]
@@ -944,7 +961,7 @@ def ai_ask_llm(request):
         answer = call_openai_chat(question, context_docs=relevant_docs or None)
     except TimeoutError:
         fallback_docs = [
-            {"name": d.name, "start_url": reverse("core:start_document", args=[d.id])}
+            {"name": d.name, "start_url": _doc_action_url(d)}
             for d in relevant_docs
         ]
         fallback_answer = (
@@ -967,7 +984,7 @@ def ai_ask_llm(request):
     suggested_docs = [
         {
             "name": d.name,
-            "start_url": reverse("core:start_document", args=[d.id]),
+            "start_url": _doc_action_url(d),
         }
         for d in relevant_docs
     ]
