@@ -693,14 +693,9 @@ def export_filled_document(request, doc_id):
         if not (values.get(v) or "").strip():
             missing.append(v)
     if missing:
-        from django.contrib import messages
-        messages.error(
-            request,
-            f"Документ нельзя экспортировать: не заполнено обязательных полей — {len(missing)}. "
-            f"Откройте документ, заполните все поля и сохраните.",
-        )
         return redirect(
-            f"{reverse('core:fill_docx_form', args=[tv.template.document_type.id])}?doc={ud.id}"
+            f"{reverse('core:fill_docx_form', args=[tv.template.document_type.id])}"
+            f"?doc={ud.id}&incomplete={len(missing)}"
         )
 
     slug_name = slugify(ud.title, allow_unicode=True)

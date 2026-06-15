@@ -49,6 +49,26 @@
         Все поля будут подставлены в договор. После нажатия кнопки &mdash; файл скачается автоматически.
       </p>
 
+      {# ── Баннер: не заполнены обязательные поля (после попытки экспорта) ── #}
+      <div id="incompleteBanner" class="hidden mb-6 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 flex items-start gap-2.5">
+        <svg class="w-5 h-5 flex-shrink-0 mt-px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        <span><strong>Заполните все обязательные поля</strong> — без них документ нельзя экспортировать. Первое незаполненное поле выделено ниже.</span>
+      </div>
+
+      {# ── Баннер: режим просмотра ── #}
+      <div id="viewBanner" class="hidden mb-6 rounded-xl border border-brand-line bg-brand-bg px-4 py-3 text-sm text-brand-blue flex items-center justify-between gap-3">
+        <span class="flex items-center gap-2">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Режим просмотра — поля недоступны для редактирования.
+        </span>
+        <a id="switchToEditBtn" href="#" class="font-semibold underline hover:text-brand-text whitespace-nowrap">Редактировать</a>
+      </div>
+
       <form method="post" id="docxForm">
         {% csrf_token %}
         {% if user_doc %}<input type="hidden" name="user_doc_id" value="{{ user_doc.id }}">{% endif %}
@@ -481,6 +501,54 @@ document.getElementById('docxForm').addEventListener('submit', function() {
 
 // Показать предзаполненные значения (при редактировании) в предпросмотре сразу
 updatePreview();
+
+// ── Режим просмотра / подсветка незаполненных полей (после блокировки экспорта) ──
+(function () {
+  var params = new URLSearchParams(location.search);
+  var form = document.getElementById('docxForm');
+
+  // Режим просмотра: поля только для чтения, кнопки скрыты
+  if (params.get('view') === '1') {
+    document.getElementById('viewBanner').classList.remove('hidden');
+    var editParams = new URLSearchParams(location.search);
+    editParams.delete('view');
+    var qs = editParams.toString();
+    document.getElementById('switchToEditBtn').href = location.pathname + (qs ? '?' + qs : '');
+    form.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio') {
+        el.disabled = true;
+      } else {
+        el.setAttribute('readonly', '');
+      }
+      el.classList.add('pointer-events-none', 'opacity-90');
+    });
+    var btnBar = form.querySelector('.sticky.bottom-0');
+    if (btnBar) btnBar.classList.add('hidden');
+  }
+
+  // Подсветить и прокрутить к первому незаполненному обязательному полю
+  if (params.has('incomplete')) {
+    document.getElementById('incompleteBanner').classList.remove('hidden');
+    var firstEmpty = null;
+    form.querySelectorAll('[required]').forEach(function (el) {
+      var empty = el.tagName === 'SELECT' ? el.selectedIndex <= 0 : !el.value.trim();
+      if (empty) {
+        el.style.borderColor = '#dc2626';
+        el.style.boxShadow = '0 0 0 2px rgba(220,38,38,0.25)';
+        if (!firstEmpty) firstEmpty = el;
+        var clear = function () { el.style.borderColor = ''; el.style.boxShadow = ''; };
+        el.addEventListener('input', clear);
+        el.addEventListener('change', clear);
+      }
+    });
+    if (firstEmpty) {
+      setTimeout(function () {
+        firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstEmpty.focus({ preventScroll: true });
+      }, 200);
+    }
+  }
+})();
 </script>
 {% endblock %}
 
