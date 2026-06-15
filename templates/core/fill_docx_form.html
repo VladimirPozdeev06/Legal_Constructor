@@ -51,6 +51,7 @@
 
       <form method="post" id="docxForm">
         {% csrf_token %}
+        {% if user_doc %}<input type="hidden" name="user_doc_id" value="{{ user_doc.id }}">{% endif %}
 
         {% for section_name, fields in field_groups %}
         <section class="mb-8">
@@ -143,7 +144,8 @@
           <div class="space-y-2">
             {% for att in attachments %}
             <label class="flex items-center gap-3 p-3 rounded-xl border border-brand-line bg-white cursor-pointer hover:border-brand-blue transition-colors group">
-              <input type="checkbox" name="include_att_{{ att.id }}" checked
+              <input type="checkbox" name="include_att_{{ att.id }}"
+                     {% if not is_editing or att.id in saved_att_included %}checked{% endif %}
                      class="w-4 h-4 rounded accent-brand-blue flex-shrink-0">
               <span class="text-sm text-brand-text group-hover:text-brand-blue transition-colors">{{ att.title }}</span>
             </label>
@@ -155,8 +157,8 @@
         </section>
         {% endif %}
 
-        {# ── Кнопка ── #}
-        <div class="sticky bottom-0 pt-4 pb-6 bg-gradient-to-t from-brand-bg via-brand-bg to-transparent">
+        {# ── Кнопки ── #}
+        <div class="sticky bottom-0 pt-4 pb-6 bg-gradient-to-t from-brand-bg via-brand-bg to-transparent space-y-2">
           <button type="submit" id="submitBtn"
                   class="w-full flex items-center justify-center gap-2 rounded-xl
                          bg-brand-blue hover:bg-brand-blueHover active:bg-brand-bluePressed
@@ -168,8 +170,17 @@
             </svg>
             <span id="submitLabel">{% if attachments %}Сформировать и скачать{% else %}Сформировать и скачать договор{% endif %}</span>
           </button>
-          <p class="text-center text-xs text-brand-beige mt-2">
-            Заполните все поля — они будут подставлены в договор
+          <button type="button" id="saveBtn"
+                  class="w-full flex items-center justify-center gap-2 rounded-xl
+                         border border-brand-blue text-brand-blue hover:bg-brand-bg
+                         font-semibold text-base py-3 px-6 transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span id="saveLabel">{% if is_editing %}Сохранить изменения{% else %}Сохранить в «Мои документы»{% endif %}</span>
+          </button>
+          <p class="text-center text-xs text-brand-beige mt-1">
+            «Сохранить» добавит документ в «Мои документы» — можно вернуться и доделать позже
           </p>
         </div>
       </form>
@@ -443,6 +454,33 @@ document.getElementById('docxForm').addEventListener('submit', function() {
     label.textContent = 'Сформировать и скачать договор';
   }, 5000);
 });
+
+// ── Кнопка «Сохранить в Мои документы» ──
+(function () {
+  var saveBtn = document.getElementById('saveBtn');
+  if (!saveBtn) return;
+  saveBtn.addEventListener('click', async function () {
+    var form  = document.getElementById('docxForm');
+    var label = document.getElementById('saveLabel');
+    var orig  = label.textContent;
+    saveBtn.disabled = true; saveBtn.classList.add('opacity-70'); label.textContent = 'Сохраняю…';
+    try {
+      var token = (form.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+      var r = await fetch("{% url 'core:save_filled_document' document_type.id %}", {
+        method: 'POST', body: new FormData(form), headers: { 'X-CSRFToken': token }
+      });
+      var j = await r.json();
+      if (j && j.ok && j.redirect) { window.location.href = j.redirect; return; }
+      label.textContent = 'Не удалось сохранить';
+    } catch (e) { label.textContent = 'Ошибка сети'; }
+    setTimeout(function () {
+      saveBtn.disabled = false; saveBtn.classList.remove('opacity-70'); label.textContent = orig;
+    }, 2500);
+  });
+})();
+
+// Показать предзаполненные значения (при редактировании) в предпросмотре сразу
+updatePreview();
 </script>
 {% endblock %}
 

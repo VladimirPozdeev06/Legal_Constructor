@@ -127,8 +127,13 @@
                         </script>
                     {% endwith %}
                 {% else %}
-                    <div class="min-h-[420px] rounded-xl bg-white p-4 text-[16px] text-[#022E4C]">
-                        Выберите необходимый шаблон договора в списке слева.
+                    <div class="flex min-h-[420px] flex-col items-center justify-center gap-5 rounded-xl bg-white p-8 text-center">
+                        <img src="{% static 'icons/ic-document-blue.svg' %}" alt="" class="h-16 w-16 opacity-70">
+                        <div>
+                            <p class="text-[20px] font-semibold text-[#022E4C]">Выберите шаблон договора в списке слева</p>
+                            <p class="mt-2 text-[15px] leading-[1.4] text-[#022E4C]/70">Заполните поля и нажмите «Сохранить» — документ появится в разделе «Мои документы», где его можно открыть, скачать или отредактировать.</p>
+                        </div>
+                        <a href="{% url 'core:my_documents' %}" class="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#517493] px-6 text-[14px] font-semibold uppercase text-[#F3F0EA] transition hover:bg-[#7490A9]">Мои документы</a>
                     </div>
                 {% endif %}
             </section>

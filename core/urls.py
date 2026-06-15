@@ -24,6 +24,16 @@ urlpatterns = [
         name="start_document",
     ),
     path(
+        "document-types/<int:document_type_id>/save-filled/",
+        views.save_filled_document,
+        name="save_filled_document",
+    ),
+    path(
+        "documents/<int:doc_id>/export-filled/",
+        views.export_filled_document,
+        name="export_filled_document",
+    ),
+    path(
         "documents/<int:doc_id>/export-docx/",
         views.download_user_document_docx,
         name="download_user_document_docx",

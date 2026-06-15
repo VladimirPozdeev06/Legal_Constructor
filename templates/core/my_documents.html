@@ -19,16 +19,33 @@
 
         <section class="relative z-10 flex-1 p-2">
             <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {% for document in documents %}
-                    <a href="{% url 'core:cabinet' %}?doc={{ document.id }}&domain={{ document.template_version.template.document_type.domain.slug }}" class="flex min-h-[100px] items-center gap-3 rounded-2xl border border-[#517493] bg-[#DCE3E9] px-8 py-5 transition hover:bg-[#CBD5DF]">
-                        <img src="{% static 'icons/ic-document.svg' %}" alt="" class="h-12 w-12">
-                        <span class="flex flex-col">
-                            <span class="text-[20px] font-semibold leading-[1.1]">{{ document.title }}</span>
-                            <span class="pt-1 text-[20px] leading-[1.3]">{{ document.updated_at|date:"d.m.Y, H:i" }}</span>
-                        </span>
-                    </a>
+                {% for item in documents %}
+                    <div class="flex flex-col gap-3 rounded-2xl border border-[#517493] bg-[#DCE3E9] px-6 py-5">
+                        <a href="{{ item.edit_url }}" class="group flex items-center gap-3">
+                            <img src="{% static 'icons/ic-document.svg' %}" alt="" class="h-12 w-12 shrink-0">
+                            <span class="flex flex-col">
+                                <span class="text-[18px] font-semibold leading-[1.15] group-hover:text-[#56061D]">{{ item.doc.title }}</span>
+                                <span class="pt-1 text-[14px] text-[#022E4C]/70">{{ item.doc.updated_at|date:"d.m.Y, H:i" }}</span>
+                            </span>
+                        </a>
+                        <div class="flex flex-wrap gap-2 border-t border-[#517493]/30 pt-3 text-[13px] font-semibold">
+                            <a href="{{ item.edit_url }}" class="rounded-lg bg-white/70 px-3 py-1.5 text-[#022E4C] transition hover:bg-white">Просмотр</a>
+                            <a href="{{ item.edit_url }}" class="rounded-lg bg-white/70 px-3 py-1.5 text-[#022E4C] transition hover:bg-white">Редактировать</a>
+                            <a href="{{ item.export_url }}" class="rounded-lg bg-[#517493] px-3 py-1.5 text-[#F3F0EA] transition hover:bg-[#7490A9]">Экспорт</a>
+                            <form method="post" action="{{ item.duplicate_url }}" class="m-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{% url 'core:my_documents' %}">
+                                <button type="submit" class="rounded-lg bg-white/70 px-3 py-1.5 text-[#022E4C] transition hover:bg-white">Дублировать</button>
+                            </form>
+                            <form method="post" action="{{ item.delete_url }}" class="m-0" onsubmit="return confirm('Удалить документ безвозвратно?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{% url 'core:my_documents' %}">
+                                <button type="submit" class="rounded-lg bg-[#56061D]/10 px-3 py-1.5 text-[#56061D] transition hover:bg-[#56061D]/20">Удалить</button>
+                            </form>
+                        </div>
+                    </div>
                 {% empty %}
-                    <p class="col-span-full py-20 text-center text-[20px] text-[#517493]">Пока нет документов. Перейдите в личный кабинет и выберите шаблон договора.</p>
+                    <p class="col-span-full py-20 text-center text-[20px] text-[#517493]">Пока нет документов. Заполните договор и нажмите «Сохранить в Мои документы».</p>
                 {% endfor %}
             </div>
         </section>

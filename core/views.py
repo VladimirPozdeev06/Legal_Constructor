@@ -446,13 +446,71 @@ def _extract_docx_text_blocks(path: str):
     return blocks
 
 
-@login_required
-def fill_docx_form(request, document_type_id):
-    """GET: форма заполнения переменных; POST: генерирует docx (или zip с приложениями) через docxtpl."""
+def _collect_docx_variables(docx_path, attachments):
+    """Все переменные основного документа + эксклюзивные переменные приложений.
+    Возвращает (variables, var_to_att)."""
+    variables = _extract_docx_variables(docx_path)
+    var_to_att: dict[str, int] = {}
+    vars_set = set(variables)
+    for att in attachments:
+        try:
+            for v in _extract_docx_variables(att.docx_file.path):
+                if v not in vars_set:
+                    variables.append(v)
+                    vars_set.add(v)
+                    var_to_att[v] = att.id
+        except Exception:
+            pass
+    return variables, var_to_att
+
+
+def _render_filled_files(docx_path, variables, values, included_atts, slug_name):
+    """Рендерит основной .docx, при наличии выбранных приложений — упаковывает в .zip.
+    Возвращает (bytes, content_type, filename)."""
     import zipfile
     from docxtpl import DocxTemplate
+
+    context = {v: values.get(v, "") for v in variables}
+    if not included_atts:
+        tpl = DocxTemplate(docx_path)
+        tpl.render(context)
+        buf = BytesIO()
+        tpl.save(buf)
+        return (
+            buf.getvalue(),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            f"{slug_name}.docx",
+        )
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        tpl = DocxTemplate(docx_path)
+        tpl.render(context)
+        main_buf = BytesIO()
+        tpl.save(main_buf)
+        zf.writestr(f"{slug_name}.docx", main_buf.getvalue())
+        for att in included_atts:
+            try:
+                att_tpl = DocxTemplate(att.docx_file.path)
+                att_tpl.render(context)
+                att_buf = BytesIO()
+                att_tpl.save(att_buf)
+                zf.writestr(f"{slugify(att.title, allow_unicode=True)}.docx", att_buf.getvalue())
+            except Exception:
+                pass
+    return zip_buffer.getvalue(), "application/zip", f"{slug_name}.zip"
+
+
+def _attachment_response(content, content_type, filename):
+    response = HttpResponse(content, content_type=content_type)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def fill_docx_form(request, document_type_id):
+    """GET: форма заполнения (с ?doc=<id> подгружает сохранённые значения);
+    POST: генерирует docx/zip через docxtpl."""
     from .variables import group_variables
-    from catalog.models import TemplateAttachment
 
     document_type = get_object_or_404(DocumentType, id=document_type_id, is_active=True)
     template_version = (
@@ -469,82 +527,40 @@ def fill_docx_form(request, document_type_id):
 
     docx_path = template_version.docx_file.path
     attachments = list(template_version.attachments.all())
-
-    # Переменные из основного документа
-    variables = _extract_docx_variables(docx_path)
-    main_vars_set = set(variables)
-
-    # Добавляем переменные из приложений (без дублей)
-    # var_to_att: переменные, которые есть ТОЛЬКО в приложении (нет в основном)
-    var_to_att: dict[str, int] = {}
-    vars_set = set(variables)
-    for att in attachments:
-        try:
-            for v in _extract_docx_variables(att.docx_file.path):
-                if v not in vars_set:
-                    variables.append(v)
-                    vars_set.add(v)
-                    var_to_att[v] = att.id  # эксклюзивная переменная приложения
-        except Exception:
-            pass
+    variables, var_to_att = _collect_docx_variables(docx_path, attachments)
 
     if request.method == "POST":
-        context = {v: request.POST.get(v, "") for v in variables}
+        values = {v: request.POST.get(v, "") for v in variables}
         slug_name = slugify(document_type.name, allow_unicode=True)
-
-        # Выбранные приложения
         included_atts = [
             att for att in attachments
             if request.POST.get(f"include_att_{att.id}") == "on"
         ]
+        content, ctype, filename = _render_filled_files(
+            docx_path, variables, values, included_atts, slug_name
+        )
+        return _attachment_response(content, ctype, filename)
 
-        if not included_atts:
-            # Только основной документ — возвращаем один .docx
-            tpl = DocxTemplate(docx_path)
-            tpl.render(context)
-            output = BytesIO()
-            tpl.save(output)
-            output.seek(0)
-            filename = f"{slug_name}.docx"
-            response = HttpResponse(
-                output.getvalue(),
-                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            )
-            response["Content-Disposition"] = f'attachment; filename="{filename}"'
-            return response
-        else:
-            # Основной + приложения — возвращаем ZIP
-            zip_buffer = BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-                # Основной договор
-                tpl = DocxTemplate(docx_path)
-                tpl.render(context)
-                main_buf = BytesIO()
-                tpl.save(main_buf)
-                zf.writestr(f"{slug_name}.docx", main_buf.getvalue())
-
-                # Приложения
-                for att in included_atts:
-                    try:
-                        att_tpl = DocxTemplate(att.docx_file.path)
-                        att_tpl.render(context)
-                        att_buf = BytesIO()
-                        att_tpl.save(att_buf)
-                        att_filename = f"{slugify(att.title, allow_unicode=True)}.docx"
-                        zf.writestr(att_filename, att_buf.getvalue())
-                    except Exception:
-                        pass
-
-            zip_buffer.seek(0)
-            zip_name = f"{slug_name}.zip"
-            response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
-            response["Content-Disposition"] = f'attachment; filename="{zip_name}"'
-            return response
+    # ── Редактирование сохранённого документа: подгружаем значения ──
+    user_doc = None
+    saved_values: dict[str, str] = {}
+    saved_att_included: set[int] = set()
+    doc_id = request.GET.get("doc")
+    if doc_id:
+        user_doc = UserDocument.objects.filter(id=doc_id, user=request.user).first()
+        if user_doc:
+            for fv in user_doc.field_values.all():
+                if fv.variable_key.startswith("__include_att_"):
+                    if fv.value == "on":
+                        try:
+                            saved_att_included.add(int(fv.variable_key[len("__include_att_"):]))
+                        except ValueError:
+                            pass
+                else:
+                    saved_values[fv.variable_key] = fv.value
 
     # GET: собираем поля формы с группировкой
     text_blocks = _extract_docx_text_blocks(docx_path)
-
-    # Порядок переменных в документе (для сортировки полей формы)
     var_order: list[str] = []
     _seen: set[str] = set()
     for _block in text_blocks:
@@ -553,7 +569,6 @@ def fill_docx_form(request, document_type_id):
                 var_order.append(_content)
                 _seen.add(_content)
 
-    # Блоки предпросмотра для приложений
     attachment_previews = []
     for att in attachments:
         try:
@@ -562,12 +577,10 @@ def fill_docx_form(request, document_type_id):
             att_blocks = []
         attachment_previews.append({"attachment": att, "blocks": att_blocks})
 
-    field_groups = group_variables(variables, request.POST, var_order=var_order)
-
-    # Помечаем поля, которые есть только в приложениях
+    field_groups = group_variables(variables, saved_values, var_order=var_order)
     for _sec, _fields in field_groups:
         for _field in _fields:
-            _field['att_id'] = var_to_att.get(_field['name'])  # None = поле основного договора
+            _field['att_id'] = var_to_att.get(_field['name'])
 
     return render(request, "core/fill_docx_form.html", {
         "document_type": document_type,
@@ -576,7 +589,100 @@ def fill_docx_form(request, document_type_id):
         "text_blocks": text_blocks,
         "attachments": attachments,
         "attachment_previews": attachment_previews,
+        "user_doc": user_doc,
+        "saved_att_included": saved_att_included,
+        "is_editing": user_doc is not None,
     })
+
+
+@login_required
+@require_POST
+def save_filled_document(request, document_type_id):
+    """Сохраняет введённые в форму значения как документ пользователя («Мои документы»)."""
+    document_type = get_object_or_404(DocumentType, id=document_type_id, is_active=True)
+    template_version = (
+        TemplateVersion.objects.filter(
+            template__document_type=document_type,
+            template__is_active=True,
+            is_published=True,
+        )
+        .order_by("-version_number")
+        .first()
+    )
+    if template_version is None or not template_version.docx_file:
+        raise Http404("Размеченный шаблон не найден")
+
+    docx_path = template_version.docx_file.path
+    attachments = list(template_version.attachments.all())
+    variables, _ = _collect_docx_variables(docx_path, attachments)
+
+    user_doc_id = request.POST.get("user_doc_id")
+    ud = None
+    if user_doc_id:
+        ud = UserDocument.objects.filter(id=user_doc_id, user=request.user).first()
+    if ud is None:
+        ud = UserDocument.objects.create(
+            user=request.user,
+            template_version=template_version,
+            title=document_type.name,
+            content="",
+            status=UserDocument.Status.DRAFT,
+            workspace_phase=UserDocument.WorkspacePhase.VARIABLES,
+        )
+
+    ud.field_values.all().delete()
+    rows = [
+        DocumentFieldValue(
+            user_document=ud, variable_key=k, variable_label=k,
+            value=request.POST.get(k, ""), is_required=False,
+        )
+        for k in variables
+    ]
+    for att in attachments:
+        rows.append(DocumentFieldValue(
+            user_document=ud,
+            variable_key=f"__include_att_{att.id}",
+            variable_label="",
+            value="on" if request.POST.get(f"include_att_{att.id}") == "on" else "",
+            is_required=False,
+        ))
+    DocumentFieldValue.objects.bulk_create(rows)
+    ud.last_modified_at = timezone.now()
+    ud.save()
+
+    return JsonResponse({"ok": True, "redirect": reverse("core:my_documents"), "doc_id": ud.id})
+
+
+@login_required
+def export_filled_document(request, doc_id):
+    """Перескачивает сохранённый документ (docx/zip) из сохранённых значений формы."""
+    ud = get_object_or_404(UserDocument, id=doc_id, user=request.user)
+    tv = ud.template_version
+    if not tv.docx_file:
+        # старый текстовый документ — экспорт как раньше (plain docx)
+        return download_user_document_docx(request, doc_id)
+
+    docx_path = tv.docx_file.path
+    attachments = list(tv.attachments.all())
+    variables, _ = _collect_docx_variables(docx_path, attachments)
+
+    values: dict[str, str] = {}
+    included_ids: set[int] = set()
+    for fv in ud.field_values.all():
+        if fv.variable_key.startswith("__include_att_"):
+            if fv.value == "on":
+                try:
+                    included_ids.add(int(fv.variable_key[len("__include_att_"):]))
+                except ValueError:
+                    pass
+        else:
+            values[fv.variable_key] = fv.value
+    included_atts = [att for att in attachments if att.id in included_ids]
+    slug_name = slugify(ud.title, allow_unicode=True)
+    content, ctype, filename = _render_filled_files(
+        docx_path, variables, values, included_atts, slug_name
+    )
+    return _attachment_response(content, ctype, filename)
 
 
 @login_required
@@ -706,6 +812,9 @@ def duplicate_document(request, doc_id):
             value=fv.value,
             is_required=fv.is_required,
         )
+    next_url = request.POST.get("next")
+    if next_url:
+        return redirect(next_url)
     return redirect(f"{reverse('core:cabinet')}?doc={clone.id}&domain={source.template_version.template.document_type.domain.slug}")
 
 
@@ -714,7 +823,10 @@ def duplicate_document(request, doc_id):
 def delete_document(request, doc_id):
     ud = get_object_or_404(UserDocument, id=doc_id, user=request.user)
     domain_slug = ud.template_version.template.document_type.domain.slug
+    next_url = request.POST.get("next")
     ud.delete()
+    if next_url:
+        return redirect(next_url)
     return redirect(f"{reverse('core:cabinet')}?domain={domain_slug}")
 
 
@@ -825,11 +937,30 @@ def legal_document_preview(request, slug):
 
 @login_required
 def my_documents(request):
-    docs = UserDocument.objects.filter(
-        user=request.user,
-        status__in=[UserDocument.Status.DRAFT, UserDocument.Status.READY],
+    docs = (
+        UserDocument.objects.filter(
+            user=request.user,
+            status__in=[UserDocument.Status.DRAFT, UserDocument.Status.READY],
+        )
+        .select_related("template_version__template__document_type__domain")
     )
-    return render(request, "core/my_documents.html", {"documents": docs})
+    items = []
+    for d in docs:
+        dt = d.template_version.template.document_type
+        is_filled = bool(d.template_version.docx_file)
+        if is_filled:
+            edit_url = f"{reverse('core:fill_docx_form', args=[dt.id])}?doc={d.id}"
+        else:
+            edit_url = f"{reverse('core:cabinet')}?doc={d.id}&domain={dt.domain.slug}"
+        items.append({
+            "doc": d,
+            "is_filled": is_filled,
+            "edit_url": edit_url,
+            "export_url": reverse("core:export_filled_document", args=[d.id]),
+            "duplicate_url": reverse("core:duplicate_document", args=[d.id]),
+            "delete_url": reverse("core:delete_document", args=[d.id]),
+        })
+    return render(request, "core/my_documents.html", {"documents": items})
 
 
 def _doc_action_url(document_type) -> str:
