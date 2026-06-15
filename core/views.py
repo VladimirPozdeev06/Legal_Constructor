@@ -665,7 +665,7 @@ def export_filled_document(request, doc_id):
 
     docx_path = tv.docx_file.path
     attachments = list(tv.attachments.all())
-    variables, _ = _collect_docx_variables(docx_path, attachments)
+    variables, var_to_att = _collect_docx_variables(docx_path, attachments)
 
     values: dict[str, str] = {}
     included_ids: set[int] = set()
@@ -679,6 +679,30 @@ def export_filled_document(request, doc_id):
         else:
             values[fv.variable_key] = fv.value
     included_atts = [att for att in attachments if att.id in included_ids]
+
+    # Нельзя экспортировать незаполненный документ: проверяем обязательные текстовые поля
+    # (основной документ + поля включённых приложений; select-поля пол/окончания пропускаем).
+    from .variables import get_field_type
+    missing = []
+    for v in variables:
+        att_id = var_to_att.get(v)
+        if att_id is not None and att_id not in included_ids:
+            continue  # поле невключённого приложения — не требуется
+        if get_field_type(v) != "text":
+            continue  # выпадающие списки (пол/окончания) допускают пустое значение
+        if not (values.get(v) or "").strip():
+            missing.append(v)
+    if missing:
+        from django.contrib import messages
+        messages.error(
+            request,
+            f"Документ нельзя экспортировать: не заполнено обязательных полей — {len(missing)}. "
+            f"Откройте документ, заполните все поля и сохраните.",
+        )
+        return redirect(
+            f"{reverse('core:fill_docx_form', args=[tv.template.document_type.id])}?doc={ud.id}"
+        )
+
     slug_name = slugify(ud.title, allow_unicode=True)
     content, ctype, filename = _render_filled_files(
         docx_path, variables, values, included_atts, slug_name
