@@ -25,8 +25,9 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
 
-# Лимит запросов к AI в сутки для авторизованных пользователей
-AI_DAILY_LLM_LIMIT_AUTH = int(os.environ.get("AI_DAILY_LLM_LIMIT_AUTH", "15"))
+# Бесплатный лимит запросов к AI для авторизованных пользователей НА ВСЁ ВРЕМЯ
+# (не в сутки — пробный лимит, дальше платный тариф). Счётчик хранится в БД (модель AIUsage).
+AI_FREE_LLM_LIMIT_AUTH = int(os.environ.get("AI_FREE_LLM_LIMIT_AUTH", os.environ.get("AI_DAILY_LLM_LIMIT_AUTH", "15")))
 # Без авторизации — запросов за сессию
 AI_GUEST_LLM_LIMIT = int(os.environ.get("AI_GUEST_LLM_LIMIT", "1"))
 
@@ -135,19 +136,31 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        # Устойчивость к конкурентной записи (несколько пользователей одновременно):
-        # WAL + увеличенный таймаут блокировки убирают ошибки "database is locked".
-        'OPTIONS': {
-            'timeout': 20,
-            'transaction_mode': 'IMMEDIATE',
-            'init_command': 'PRAGMA journal_mode=WAL;',
-        },
+import dj_database_url
+
+# Если задан DATABASE_URL (Neon / Render Postgres) — используем постоянную базу.
+# Иначе — локальный SQLite (с WAL для устойчивости к конкурентной записи).
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=DATABASE_URL.startswith("postgres"),
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,
+                'transaction_mode': 'IMMEDIATE',
+                'init_command': 'PRAGMA journal_mode=WAL;',
+            },
+        }
+    }
 
 
 # Password validation

@@ -5,7 +5,7 @@ services:
     runtime: python
     plan: free
     region: frankfurt
-    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate"
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate && python manage.py seed_initial_data"
     startCommand: "gunicorn config.wsgi:application"
     envVars:
       - key: PYTHON_VERSION
@@ -20,4 +20,8 @@ services:
         value: "nvidia/nemotron-nano-12b-v2-vl:free"
       # Ключ OpenRouter НЕ хранится в git — вписать вручную в дашборде Render.
       - key: OPENAI_API_KEY
+        sync: false
+      # Постоянная база (Neon/Render Postgres) — вписать вручную в дашборде.
+      # Без неё сайт работает на SQLite (данные сбрасываются при перезапуске).
+      - key: DATABASE_URL
         sync: false

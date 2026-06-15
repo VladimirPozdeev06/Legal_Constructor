@@ -832,11 +832,13 @@ def delete_document(request, doc_id):
 
 
 def get_ai_quota_state(request):
-    limit_auth = int(getattr(django_settings, "AI_DAILY_LLM_LIMIT_AUTH", 15))
+    # Авторизованным — лимит «на всё время» (счётчик в БД, переживает перезапуски).
+    limit_auth = int(getattr(django_settings, "AI_FREE_LLM_LIMIT_AUTH", 15))
     limit_guest = int(getattr(django_settings, "AI_GUEST_LLM_LIMIT", 1))
     if request.user.is_authenticated:
-        key = f"ai_llm_used:{request.user.id}:{date.today().isoformat()}"
-        used = int(cache.get(key, 0) or 0)
+        from accounts.models import AIUsage
+        usage = AIUsage.objects.filter(user=request.user).first()
+        used = usage.used if usage else 0
         return {
             "limit": limit_auth,
             "used": used,
@@ -852,13 +854,10 @@ def get_ai_quota_state(request):
 
 def increment_ai_quota(request) -> None:
     if request.user.is_authenticated:
-        key = f"ai_llm_used:{request.user.id}:{date.today().isoformat()}"
-        if cache.add(key, 1, timeout=60 * 60 * 36):
-            return
-        try:
-            cache.incr(key)
-        except ValueError:
-            cache.set(key, 1, timeout=60 * 60 * 36)
+        from accounts.models import AIUsage
+        from django.db.models import F
+        usage, _ = AIUsage.objects.get_or_create(user=request.user)
+        AIUsage.objects.filter(pk=usage.pk).update(used=F("used") + 1)
         return
     request.session["ai_guest_llm_used"] = int(request.session.get("ai_guest_llm_used", 0) or 0) + 1
     request.session.modified = True
@@ -877,7 +876,7 @@ def format_quota_answer(request):
     st = get_ai_quota_state(request)
     if request.user.is_authenticated:
         return (
-            f"Сегодня у вас {st['remaining']} из {st['limit']} запросов к AI. "
+            f"У вас осталось {st['remaining']} из {st['limit']} бесплатных запросов к AI. "
             f"Использовано: {st['used']}."
         )
     return (
@@ -889,8 +888,8 @@ def format_quota_answer(request):
 def limit_exhausted_answer(request):
     if request.user.is_authenticated:
         return (
-            "Вы использовали все запросы к AI на сегодня. "
-            "Завтра лимит обновится. Полный доступ — в тарифах на главной странице (раздел «Тарифы»)."
+            "Вы израсходовали все бесплатные запросы к AI. "
+            "Полный доступ — в тарифах на главной странице (раздел «Тарифы»)."
         )
     return (
         "Бесплатный лимит запросов исчерпан. "
@@ -1132,6 +1131,6 @@ def ai_ask_llm(request):
     }
     if 0 < quota_after["remaining"] <= 5:
         payload_out["quota_warning"] = (
-            f"Осталось {quota_after['remaining']} запросов к AI до конца дня."
+            f"Осталось {quota_after['remaining']} бесплатных запросов к AI."
         )
     return JsonResponse(payload_out)
