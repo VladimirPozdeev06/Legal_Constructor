@@ -22,6 +22,7 @@ from .legal_docs import paragraphs_to_safe_html, read_docx_plain_paragraphs, res
 from .services import (
     call_openai_chat,
     extract_variable_keys,
+    is_document_request,
     is_profanity_or_gibberish,
     merge_template_body,
     search_document_types,
@@ -1062,9 +1063,12 @@ def ai_ask_llm(request):
             }
         )
 
-    # Ищем релевантные шаблоны: min_score=8 позволяет keyword-матчам работать.
-    # Синонимы не хардкодятся — добавляются в поле keywords документа через админку.
-    relevant_docs = search_document_types(question, limit=3, min_score=8)
+    # Предлагаем шаблоны ТОЛЬКО когда вопрос про документ/сделку (есть намерение).
+    # На общие/информационные вопросы шаблоны не навязываем.
+    if is_document_request(question):
+        relevant_docs = search_document_types(question, limit=3, min_score=8)
+    else:
+        relevant_docs = []
 
     # Поиск в документах пользователя
     user_docs = []
