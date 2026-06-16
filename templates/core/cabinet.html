@@ -11,7 +11,7 @@
             </a>
             <div class="app-nav-btns flex items-center gap-6 max-[900px]:flex-wrap max-[900px]:justify-end">
                 <a href="{% url 'core:my_documents' %}" class="app-nav-btn inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Мои документы</a>
-                <a href="{% url 'core:my_documents' %}" class="app-nav-btn inline-flex h-12 items-center justify-center rounded-[12px] bg-[#517493] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#7490A9] active:bg-[#415D76]">Профиль</a>
+                <span class="app-nav-btn inline-flex h-12 cursor-not-allowed select-none items-center justify-center rounded-[12px] bg-[#C6BCAC] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#FCFBFA]/70" aria-disabled="true" title="Раздел в разработке">Профиль</span>
                 <form method="post" action="{% url 'accounts:logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="app-nav-btn inline-flex h-12 items-center justify-center rounded-[12px] bg-[#56061D] px-12 text-[16px] font-semibold uppercase leading-[1.2] text-[#F3F0EA] transition hover:bg-[#963C56] active:bg-[#762139]">Выйти</button>
@@ -139,9 +139,9 @@
             </section>
 
             <aside class="pt-1">
-                <p class="mb-4 text-[24px] font-bold leading-none">Действия с<br>документом</p>
-                <div class="flex flex-col gap-2 text-[20px] font-bold leading-[1.2] text-[#022E4C]">
-                    {% if workspace %}
+                {% if workspace %}
+                    <p class="mb-4 text-[24px] font-bold leading-none">Действия с<br>документом</p>
+                    <div class="flex flex-col gap-2 text-[20px] font-bold leading-[1.2] text-[#022E4C]">
                         <button type="button" id="action-preview" class="text-left transition hover:text-[#517493]">Просмотр</button>
                         <button type="button" id="action-edit" class="text-left transition hover:text-[#517493]">Редактирование</button>
                         <form method="post" action="{% url 'core:duplicate_document' workspace.document.id %}">
@@ -153,14 +153,24 @@
                             <button type="submit" class="text-left transition hover:text-[#963C56]">Удаление</button>
                         </form>
                         <a href="{% url 'core:download_user_document_docx' workspace.document.id %}" class="text-left transition hover:text-[#517493]">Экспорт</a>
-                    {% else %}
-                        <span class="text-[#022E4C]/60">Просмотр</span>
-                        <span class="text-[#022E4C]/60">Редактирование</span>
-                        <span class="text-[#022E4C]/60">Дублирование</span>
-                        <span class="text-[#022E4C]/60">Удаление</span>
-                        <span class="text-[#022E4C]/60">Экспорт</span>
-                    {% endif %}
-                </div>
+                    </div>
+                {% else %}
+                    {# Памятка-подсказка, пока документ не выбран #}
+                    <div class="rounded-xl bg-[#F9F7F5] p-5 shadow-[0_0_48px_rgba(198,180,172,0.2)]">
+                        <p class="mb-3 flex items-start gap-2 text-[20px] font-bold leading-tight">
+                            <img src="{% static 'icons/ic-document-blue.svg' %}" alt="" class="h-6 w-6 flex-shrink-0">
+                            Как заполнить договор
+                        </p>
+                        <ol class="space-y-2 text-[16px] leading-snug text-[#022E4C]">
+                            <li>1. Стороны договора</li>
+                            <li>2. Предмет договора</li>
+                            <li>3. Сроки действия</li>
+                            <li>4. Стоимость / Цена</li>
+                            <li>5. Подписи сторон</li>
+                        </ol>
+                        <p class="mt-4 text-[15px] font-semibold text-[#517493]">Выберите шаблон слева и начните!</p>
+                    </div>
+                {% endif %}
             </aside>
         </section>
 
