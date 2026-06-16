@@ -179,7 +179,7 @@
             const rem = quotaState.remaining;
             const used = quotaState.used;
             if (cfg.isAuth) {
-                quotaStrip.textContent = `Сегодня доступно ${rem} из ${lim} запросов к AI (использовано ${used}).`;
+                quotaStrip.textContent = `Доступно ${rem} из ${lim} запросов к AI (использовано ${used}).`;
             } else {
                 quotaStrip.textContent = `Без входа в аккаунт: осталось ${rem} из ${lim} запроса.`;
             }
@@ -351,13 +351,24 @@
             thinkingEl.textContent = "Думаю над ответом…";
             askTranscript.appendChild(thinkingEl);
             askTranscript.scrollTop = askTranscript.scrollHeight;
+
+            // Бесплатная модель/хостинг могут отвечать долго (холодный старт после простоя).
+            // Подбадриваем пользователя и страхуемся таймаутом, чтобы спиннер не висел вечно.
+            const controller = new AbortController();
+            const slowTimer = setTimeout(function () {
+                thinkingEl.textContent = "Бесплатный AI отвечает дольше обычного, ещё думаю…";
+            }, 7000);
+            const abortTimer = setTimeout(function () { controller.abort(); }, 45000);
             try {
                 const askRes = await fetch(cfg.askUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
                     body: JSON.stringify({ question: q }),
+                    signal: controller.signal,
                 });
                 const data = await askRes.json().catch(() => ({}));
+                clearTimeout(slowTimer);
+                clearTimeout(abortTimer);
                 thinkingEl.remove();
                 if (data.quota) {
                     quotaState = data.quota;
@@ -389,12 +400,17 @@
                         '#pricing">перейти к тарифам</a>.';
                     askTranscript.appendChild(wrap);
                 }
-            } catch {
+            } catch (err) {
+                clearTimeout(slowTimer);
+                clearTimeout(abortTimer);
                 thinkingEl.remove();
+                const timedOut = err && err.name === "AbortError";
                 askTranscript.appendChild(
                     bubble(
                         escapeHtml(
-                            "В данный момент сервис недоступен. Попробуйте позже или воспользуйтесь подбором шаблона в разделе «Шаблоны»."
+                            timedOut
+                                ? "Сервис не ответил вовремя — возможно, бесплатный хостинг «просыпается» после простоя. Подождите минуту и отправьте вопрос ещё раз."
+                                : "В данный момент сервис недоступен. Попробуйте позже или воспользуйтесь подбором шаблона в разделе «Шаблоны»."
                         ),
                         "ai-bubble-bot",
                         false
