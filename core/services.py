@@ -1,6 +1,7 @@
 import json
 import re
 import socket
+import time
 import urllib.error
 import urllib.request
 from django.conf import settings
@@ -189,10 +190,80 @@ def is_document_request(text: str) -> bool:
     return True
 
 
+# Рекомендуемая цепочка по умолчанию (если переменная OPENAI_MODELS не задана):
+# сначала быстрая и качественная gpt-oss-20b, затем маленькая llama как быстрый
+# запас. Настроенная OPENAI_MODEL добавляется последним резервом (см. ниже).
+DEFAULT_MODELS = (
+    "openai/gpt-oss-20b:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+)
+
+# Ошибки одной модели, при которых имеет смысл пробовать следующую.
+_MODEL_RETRYABLE_ERRORS = (
+    urllib.error.HTTPError,
+    urllib.error.URLError,
+    TimeoutError,
+    socket.timeout,
+    json.JSONDecodeError,
+    KeyError,
+    IndexError,
+    TypeError,
+    ValueError,
+)
+
+
+def resolve_chat_models() -> list[str]:
+    """Список моделей для failover-цепочки (в порядке приоритета, без дублей)."""
+    raw = (getattr(settings, "OPENAI_MODELS", "") or "").strip()
+    if raw:
+        models = [m.strip() for m in raw.replace("\n", ",").split(",") if m.strip()]
+    else:
+        models = list(DEFAULT_MODELS)
+        primary = (getattr(settings, "OPENAI_MODEL", "") or "").strip()
+        if primary:
+            models.append(primary)  # настроенная модель — последним резервом
+    seen, out = set(), []
+    for m in models:
+        if m not in seen:
+            seen.add(m)
+            out.append(m)
+    return out
+
+
+def _request_single_model(model, system, q, base_url, api_key, timeout) -> str:
+    """Один запрос к конкретной модели. Бросает исключение при ошибке/пустом ответе."""
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": q},
+        ],
+        "temperature": 0.4,
+        "max_tokens": 700,
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base_url}/chat/completions",
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        body = json.loads(resp.read().decode("utf-8"))
+    content = (body["choices"][0]["message"]["content"] or "").strip()
+    if not content:
+        raise ValueError("empty answer")
+    return content
+
+
 def call_openai_chat(
     user_message: str,
-    timeout: float = 15.0,
-    context_docs=None,       # list[DocumentType] | None
+    timeout: float = 22.0,            # общий бюджет на всю цепочку моделей
+    context_docs=None,               # list[DocumentType] | None
+    per_model_timeout: float = 8.0,  # сколько ждём каждую модель, прежде чем перейти к следующей
 ) -> str:
     q = (user_message or "").strip()
     api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
@@ -229,38 +300,23 @@ def call_openai_chat(
         )
 
     base_url = getattr(settings, "OPENAI_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
-    model = getattr(settings, "OPENAI_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
+    models = resolve_chat_models()
 
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": q},
-        ],
-        "temperature": 0.4,
-        "max_tokens": 700,
-    }
+    # Пробуем модели по очереди: первая, что ответит, — выигрывает. Если модель
+    # долго молчит или вернула ошибку (429/503 и т.п.) — переходим к следующей.
+    # Общий бюджет времени ограничен, чтобы запрос не висел дольше нужного.
+    deadline = time.monotonic() + timeout
+    last_exc = None
+    for model in models:
+        remaining = deadline - time.monotonic()
+        if remaining < 2:
+            break
+        try:
+            return _request_single_model(
+                model, system, q, base_url, api_key, min(per_model_timeout, remaining)
+            )
+        except _MODEL_RETRYABLE_ERRORS as exc:
+            last_exc = exc
+            continue
 
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        f"{base_url}/chat/completions",
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, socket.timeout):
-        raise TimeoutError("LLM unavailable")
-    except json.JSONDecodeError as exc:
-        raise TimeoutError("LLM bad response") from exc
-
-    try:
-        return body["choices"][0]["message"]["content"].strip()
-    except (KeyError, IndexError, TypeError) as exc:
-        raise TimeoutError("LLM parse error") from exc
+    raise TimeoutError(f"LLM unavailable ({last_exc})")

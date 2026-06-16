@@ -24,6 +24,10 @@ load_dotenv(BASE_DIR / ".env")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
+# Цепочка моделей через запятую (failover): если первая долго не отвечает или
+# вернула ошибку — пробуется следующая. Если пусто — берётся OPENAI_MODEL плюс
+# встроенные запасные. Полностью переопределяется переменной OPENAI_MODELS.
+OPENAI_MODELS = os.environ.get("OPENAI_MODELS", "")
 
 # Бесплатный лимит запросов к AI для авторизованных пользователей НА ВСЁ ВРЕМЯ
 # (не в сутки — пробный лимит, дальше платный тариф). Счётчик хранится в БД (модель AIUsage).
