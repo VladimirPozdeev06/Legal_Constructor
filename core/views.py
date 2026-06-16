@@ -22,8 +22,10 @@ from .legal_docs import paragraphs_to_safe_html, read_docx_plain_paragraphs, res
 from .services import (
     call_openai_chat,
     extract_variable_keys,
+    is_catalog_listing_question,
     is_document_request,
     is_profanity_or_gibberish,
+    list_catalog_documents,
     merge_template_body,
     search_document_types,
 )
@@ -1081,9 +1083,14 @@ def ai_ask_llm(request):
             }
         )
 
-    # Предлагаем шаблоны ТОЛЬКО когда вопрос про документ/сделку (есть намерение).
-    # На общие/информационные вопросы шаблоны не навязываем.
-    if is_document_request(question):
+    # «Какие договоры есть?», «что вы умеете» и т.п. — показываем реальный каталог
+    # карточками (а не полагаемся на текст LLM, который может выдумать названия).
+    # Иначе — предлагаем шаблоны только при намерении оформить документ.
+    if is_catalog_listing_question(question):
+        relevant_docs = search_document_types(question, limit=8, min_score=12)
+        if not relevant_docs:
+            relevant_docs = list_catalog_documents(limit=8)
+    elif is_document_request(question):
         relevant_docs = search_document_types(question, limit=3, min_score=8)
     else:
         relevant_docs = []
